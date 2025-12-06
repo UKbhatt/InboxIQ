@@ -25,7 +25,17 @@ class RemoteAuthDataSource {
 
       return Success(response.data['authUrl'] as String);
     } on DioException catch (e) {
-      return Error(ServerFailure(e.response?.data?['error'] ?? e.message ?? 'Unknown error'));
+      String errorMessage = 'Connection failed';
+      if (e.type == DioExceptionType.connectionTimeout) {
+        errorMessage = 'Connection timeout. Make sure the backend server is running.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = 'Cannot connect to server. Check API_BASE_URL in .env file. For Android emulator use: http://10.0.2.2:3000, for physical device use your computer IP address.';
+      } else if (e.response != null) {
+        errorMessage = e.response?.data?['error'] ?? e.message ?? 'Server error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }

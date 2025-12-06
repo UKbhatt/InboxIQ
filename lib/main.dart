@@ -29,6 +29,7 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'InboxIQ',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

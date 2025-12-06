@@ -31,13 +31,55 @@ class _ConnectGmailScreenState extends ConsumerState<ConnectGmailScreen> {
       return;
     }
 
-    final uri = Uri.parse(authUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      final uri = Uri.parse(authUrl);
+      
+      if (!uri.hasScheme || (!uri.scheme.startsWith('http'))) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid URL format: $authUrl'),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+      
+      bool canLaunch = await canLaunchUrl(uri);
+      
+      if (!canLaunch) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No app found to open this URL. Please install a web browser.'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+      
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open browser. Please try again.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch OAuth URL')),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
