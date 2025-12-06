@@ -10,6 +10,12 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    packaging {
+    resources.excludes += "assets/flutter_assets/kernel_blob.bin"
+    jniLibs.excludes += "**/kernel_blob.bin"
+}
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
