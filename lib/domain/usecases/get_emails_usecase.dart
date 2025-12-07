@@ -7,8 +7,8 @@ class GetEmailsUseCase {
 
   GetEmailsUseCase(this.repository);
 
-  Future<Result<List<Email>>> call({int? limit, String? pageToken}) {
-    return repository.getEmails(limit: limit, pageToken: pageToken);
+  Future<Result<List<Email>>> call({int? limit, String? pageToken, int? offset}) {
+    return repository.getEmails(limit: limit, pageToken: pageToken, offset: offset);
   }
 }
 

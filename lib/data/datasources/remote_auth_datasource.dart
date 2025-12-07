@@ -27,9 +27,16 @@ class RemoteAuthDataSource {
     } on DioException catch (e) {
       String errorMessage = 'Connection failed';
       if (e.type == DioExceptionType.connectionTimeout) {
-        errorMessage = 'Connection timeout. Make sure the backend server is running.';
+        errorMessage = 'Connection timeout. Make sure the backend server is running on port 3000.';
       } else if (e.type == DioExceptionType.connectionError) {
-        errorMessage = 'Cannot connect to server. Check API_BASE_URL in .env file. For Android emulator use: http://10.0.2.2:3000, for physical device use your computer IP address.';
+        final baseUrl = ApiConstants.baseUrl;
+        errorMessage = 'Cannot connect to server at $baseUrl.\n\n'
+            'Please check:\n'
+            '1. Backend server is running (npm start in lib/backend)\n'
+            '2. API_BASE_URL in .env file is correct\n'
+            '3. If using Cloudflare tunnel, ensure it\'s active\n'
+            '4. For Android emulator: http://10.0.2.2:3000\n'
+            '5. For physical device: Use your computer IP or Cloudflare URL';
       } else if (e.response != null) {
         errorMessage = e.response?.data?['error'] ?? e.message ?? 'Server error';
       } else {

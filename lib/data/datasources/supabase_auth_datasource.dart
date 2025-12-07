@@ -14,6 +14,7 @@ class SupabaseAuthDataSource {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: null,
       );
       
       if (response.user == null) {
@@ -26,6 +27,10 @@ class SupabaseAuthDataSource {
         name: response.user!.userMetadata?['name'] as String?,
         createdAt: DateTime.parse(response.user!.createdAt),
       );
+
+      if (response.session == null) {
+        return Error(AuthFailure('Email confirmation required. Please check your email and confirm your account.'));
+      }
 
       return Success(user);
     } catch (e) {

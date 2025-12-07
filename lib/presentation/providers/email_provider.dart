@@ -33,6 +33,7 @@ class EmailState {
 
 class EmailNotifier extends StateNotifier<EmailState> {
   final GetEmailsUseCase _getEmailsUseCase;
+  int _currentOffset = 0;
 
   EmailNotifier(this._getEmailsUseCase) : super(const EmailState());
 
@@ -41,13 +42,18 @@ class EmailNotifier extends StateNotifier<EmailState> {
 
     state = state.copyWith(isLoading: true, error: null);
 
+    if (refresh) {
+      _currentOffset = 0;
+    }
+
     final result = await _getEmailsUseCase(
-      limit: 20,
-      pageToken: refresh ? null : state.nextPageToken,
+      limit: 500,
+      offset: _currentOffset,
     );
 
     result.when(
       success: (emails) {
+        _currentOffset += emails.length;
         state = state.copyWith(
           emails: refresh ? emails : [...state.emails, ...emails],
           isLoading: false,

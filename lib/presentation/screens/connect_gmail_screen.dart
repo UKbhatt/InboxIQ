@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
+import '../providers/sync_status_provider.dart';
 import 'dashboard_screen.dart';
 
 class ConnectGmailScreen extends ConsumerStatefulWidget {
@@ -21,9 +22,15 @@ class _ConnectGmailScreenState extends ConsumerState<ConnectGmailScreen> {
 
     if (authUrl == null) {
       if (mounted) {
+        final error = ref.read(authProvider).error ?? 'Failed to get OAuth URL';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(ref.read(authProvider).error ?? 'Failed to get OAuth URL'),
+            content: Text(error),
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _connectGmail(),
+            ),
           ),
         );
       }
@@ -82,9 +89,14 @@ class _ConnectGmailScreenState extends ConsumerState<ConnectGmailScreen> {
           ),
         );
       }
-    }
+      }
 
     setState(() => _isConnecting = false);
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      ref.read(syncStatusProvider.notifier).loadSyncStatus();
+    }
   }
 
 

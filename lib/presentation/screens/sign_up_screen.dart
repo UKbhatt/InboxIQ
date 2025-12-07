@@ -33,13 +33,24 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         );
 
     if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created! Please check your email to confirm your account before signing in.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SignInScreen()),
       );
     } else if (mounted) {
+      final error = ref.read(authProvider).error ?? 'Sign up failed';
+      final isEmailConfirmationError = error.contains('Email confirmation required') || 
+                                       error.contains('email') && error.contains('confirm');
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ref.read(authProvider).error ?? 'Sign up failed'),
+          content: Text(error),
+          duration: isEmailConfirmationError ? const Duration(seconds: 8) : const Duration(seconds: 4),
         ),
       );
     }

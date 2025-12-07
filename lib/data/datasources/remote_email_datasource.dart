@@ -14,6 +14,7 @@ class RemoteEmailDataSource {
   Future<Result<List<Email>>> getEmails({
     int? limit,
     String? pageToken,
+    int? offset,
   }) async {
     try {
       final token = _getAccessToken();
@@ -23,6 +24,7 @@ class RemoteEmailDataSource {
 
       final queryParams = <String, dynamic>{};
       if (limit != null) queryParams['limit'] = limit;
+      if (offset != null) queryParams['offset'] = offset;
       if (pageToken != null) queryParams['pageToken'] = pageToken;
 
       final response = await _dio.get(
@@ -38,6 +40,58 @@ class RemoteEmailDataSource {
           .toList();
 
       return Success(emails);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+      return Error(ServerFailure(e.response?.data?['error'] ?? e.message ?? 'Unknown error'));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<Map<String, dynamic>>> getSyncStatus() async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final response = await _dio.get(
+        ApiConstants.emailSyncStatusPath,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      return Success(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+      return Error(ServerFailure(e.response?.data?['error'] ?? e.message ?? 'Unknown error'));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<void>> startSync() async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      await _dio.post(
+        ApiConstants.emailSyncPath,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      return const Success(null);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {

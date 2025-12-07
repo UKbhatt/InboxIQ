@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
-import 'connect_gmail_screen.dart';
 import 'sign_up_screen.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -32,13 +31,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         );
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ConnectGmailScreen()),
-      );
+      Navigator.of(context).pushReplacementNamed('/dashboard');
     } else if (mounted) {
+      final error = ref.read(authProvider).error ?? 'Sign in failed';
+      final isEmailNotConfirmed = error.toLowerCase().contains('email') && 
+                                  (error.toLowerCase().contains('confirm') || 
+                                   error.toLowerCase().contains('verify') ||
+                                   error.toLowerCase().contains('not confirmed'));
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ref.read(authProvider).error ?? 'Sign in failed'),
+          content: Text(isEmailNotConfirmed 
+            ? 'Please confirm your email address before signing in. Check your inbox for the confirmation email.'
+            : error),
+          duration: isEmailNotConfirmed ? const Duration(seconds: 6) : const Duration(seconds: 4),
         ),
       );
     }

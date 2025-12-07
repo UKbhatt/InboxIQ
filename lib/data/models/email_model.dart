@@ -11,6 +11,25 @@ class EmailModel extends Email {
   });
 
   factory EmailModel.fromGmailApi(Map<String, dynamic> json) {
+    if (json.containsKey('gmail_message_id') || json.containsKey('from_email')) {
+      final dateStr = json['date'] as String?;
+      DateTime date;
+      try {
+        date = dateStr != null ? DateTime.parse(dateStr) : DateTime.now();
+      } catch (e) {
+        date = DateTime.now();
+      }
+      
+      return EmailModel(
+        id: json['gmail_message_id'] as String? ?? json['id'] as String? ?? '',
+        subject: json['subject'] as String? ?? '(No Subject)',
+        from: json['from_email'] as String? ?? json['from'] as String? ?? '',
+        snippet: json['snippet'] as String? ?? '',
+        date: date,
+        isRead: json['is_read'] as bool? ?? json['isRead'] as bool? ?? false,
+      );
+    }
+
     final payload = json['payload'] as Map<String, dynamic>?;
     final headers = payload?['headers'] as List<dynamic>? ?? [];
     

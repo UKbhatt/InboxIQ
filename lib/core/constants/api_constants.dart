@@ -7,5 +7,7 @@ class ApiConstants {
   static const String oauthCallbackPath = '/api/oauth/callback';
   static const String emailsPath = '/api/emails';
   static const String connectGmailPath = '/api/oauth/connect';
+  static const String emailSyncPath = '/api/emails/sync';
+  static const String emailSyncStatusPath = '/api/emails/sync/status';
 }
 
