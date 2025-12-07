@@ -3,7 +3,9 @@ import '../../core/constants/api_constants.dart';
 import '../../core/errors/failures.dart';
 import '../../core/utils/result.dart';
 import '../models/email_model.dart';
+import '../models/email_detail_model.dart';
 import '../../domain/entities/email.dart';
+import '../../domain/entities/email_detail.dart';
 
 class RemoteEmailDataSource {
   final Dio _dio;
@@ -119,6 +121,33 @@ class RemoteEmailDataSource {
 
       final email = EmailModel.fromGmailApi(response.data as Map<String, dynamic>);
       return Success(email);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+      return Error(ServerFailure(e.response?.data?['error'] ?? e.message ?? 'Unknown error'));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final response = await _dio.get(
+        '${ApiConstants.emailsPath}/$emailId',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      final emailDetail = EmailDetailModel.fromJson(response.data as Map<String, dynamic>);
+      return Success(emailDetail);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {

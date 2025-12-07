@@ -1,5 +1,6 @@
 import '../../domain/repositories/email_repository.dart';
 import '../../domain/entities/email.dart';
+import '../../domain/entities/email_detail.dart';
 import '../../core/utils/result.dart';
 import '../datasources/remote_email_datasource.dart';
 
@@ -16,6 +17,11 @@ class EmailRepositoryImpl implements EmailRepository {
   @override
   Future<Result<Email>> getEmailById(String emailId) {
     return _dataSource.getEmailById(emailId);
+  }
+
+  @override
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId) {
+    return _dataSource.getEmailDetailById(emailId);
   }
 
   @override

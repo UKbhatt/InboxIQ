@@ -16,6 +16,7 @@ import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/get_oauth_url_usecase.dart';
 import '../../domain/usecases/connect_gmail_usecase.dart';
 import '../../domain/usecases/get_emails_usecase.dart';
+import '../../domain/usecases/get_email_detail_usecase.dart';
 
 final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
@@ -83,5 +84,9 @@ final connectGmailUseCaseProvider = Provider<ConnectGmailUseCase>((ref) {
 
 final getEmailsUseCaseProvider = Provider<GetEmailsUseCase>((ref) {
   return GetEmailsUseCase(ref.watch(emailRepositoryProvider));
+});
+
+final getEmailDetailUseCaseProvider = Provider<GetEmailDetailUseCase>((ref) {
+  return GetEmailDetailUseCase(ref.watch(emailRepositoryProvider));
 });
 

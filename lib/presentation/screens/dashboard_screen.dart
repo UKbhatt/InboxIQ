@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/email_provider.dart';
 import '../providers/sync_status_provider.dart';
+import 'email_detail_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -215,7 +216,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         _formatDate(email.date),
                                         style: Theme.of(context).textTheme.bodySmall,
                                       ),
-                                      onTap: () {},
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => EmailDetailScreen(emailId: email.id),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   );
                                 },
