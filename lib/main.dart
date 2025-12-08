@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'presentation/screens/sign_in_screen.dart';
-import 'presentation/screens/sign_up_screen.dart';
-import 'presentation/screens/dashboard_screen.dart';
-import 'presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/screens/sign_in_screen.dart';
+import 'features/auth/presentation/screens/sign_up_screen.dart';
+import 'features/email/presentation/screens/dashboard_screen.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await dotenv.load(fileName: '.env');
-  
+
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
