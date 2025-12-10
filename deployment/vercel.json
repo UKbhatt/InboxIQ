@@ -1,11 +1,5 @@
 {
-  "builds": [
-    {
-      "src": "lib/main.dart",
-      "use": "@vercel/flutter"
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
