@@ -43,4 +43,9 @@ class EmailRepositoryImpl implements EmailRepository {
   Future<Result<void>> startSync() {
     return _dataSource.startSync();
   }
+
+  @override
+  Future<Result<void>> markAsRead(String emailId) {
+    return _dataSource.markAsRead(emailId);
+  }
 }

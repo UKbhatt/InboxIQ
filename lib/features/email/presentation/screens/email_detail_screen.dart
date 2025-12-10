@@ -4,14 +4,49 @@ import 'package:flutter/services.dart';
 import '../providers/email_detail_provider.dart';
 import '../../domain/entities/email_detail.dart';
 
-class EmailDetailScreen extends ConsumerWidget {
+class EmailDetailScreen extends ConsumerStatefulWidget {
   final String emailId;
 
   const EmailDetailScreen({super.key, required this.emailId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final emailDetailState = ref.watch(emailDetailProvider(emailId));
+  ConsumerState<EmailDetailScreen> createState() => _EmailDetailScreenState();
+}
+
+class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
+  bool _hasMarkedAsRead = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mark as read after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markEmailAsRead();
+    });
+  }
+
+  void _markEmailAsRead() {
+    if (_hasMarkedAsRead) return;
+    
+    final emailDetailState = ref.read(emailDetailProvider(widget.emailId));
+    
+    // Only mark as read if email is loaded and not already read
+    if (emailDetailState.email != null && !emailDetailState.email!.isRead) {
+      _hasMarkedAsRead = true;
+      ref.read(emailDetailProvider(widget.emailId).notifier).markAsRead(widget.emailId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emailDetailState = ref.watch(emailDetailProvider(widget.emailId));
+    
+    // Mark as read when email is loaded (if not already marked)
+    if (emailDetailState.email != null && !_hasMarkedAsRead) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markEmailAsRead();
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Email Details')),
@@ -31,8 +66,8 @@ class EmailDetailScreen extends ConsumerWidget {
                   ElevatedButton(
                     onPressed: () {
                       ref
-                          .read(emailDetailProvider(emailId).notifier)
-                          .loadEmailDetail(emailId);
+                          .read(emailDetailProvider(widget.emailId).notifier)
+                          .loadEmailDetail(widget.emailId);
                     },
                     child: const Text('Retry'),
                   ),

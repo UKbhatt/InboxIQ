@@ -10,4 +10,3 @@ ENCRYPTION_KEY=your_32_byte_hex_encryption_key
 
 To generate ENCRYPTION_KEY, run:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-

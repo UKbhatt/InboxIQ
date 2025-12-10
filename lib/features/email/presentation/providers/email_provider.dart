@@ -72,6 +72,41 @@ class EmailNotifier extends StateNotifier<EmailState> {
       },
     );
   }
+
+  /// Optimistically marks an email as read in the local state
+  /// Returns the original email state for rollback if needed
+  Email? markEmailAsReadOptimistic(String emailId) {
+    final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
+    if (emailIndex == -1) return null;
+
+    final originalEmail = state.emails[emailIndex];
+    
+    // If already read, no need to update
+    if (originalEmail.isRead) return null;
+
+    // Create updated email with isRead = true
+    final updatedEmail = originalEmail.copyWith(isRead: true);
+    
+    // Update the email in the list
+    final updatedEmails = List<Email>.from(state.emails);
+    updatedEmails[emailIndex] = updatedEmail;
+    
+    // Update state immediately (optimistic update)
+    state = state.copyWith(emails: updatedEmails);
+    
+    return originalEmail;
+  }
+
+  /// Rolls back the optimistic update if API call fails
+  void rollbackMarkAsRead(String emailId, Email originalEmail) {
+    final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
+    if (emailIndex == -1) return;
+
+    final updatedEmails = List<Email>.from(state.emails);
+    updatedEmails[emailIndex] = originalEmail;
+    
+    state = state.copyWith(emails: updatedEmails);
+  }
 }
 
 final emailProvider = StateNotifierProvider<EmailNotifier, EmailState>((ref) {

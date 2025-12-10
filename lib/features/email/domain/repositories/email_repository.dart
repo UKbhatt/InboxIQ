@@ -13,4 +13,5 @@ abstract class EmailRepository {
   Future<Result<EmailDetail>> getEmailDetailById(String emailId);
   Future<Result<Map<String, dynamic>>> getSyncStatus();
   Future<Result<void>> startSync();
+  Future<Result<void>> markAsRead(String emailId);
 }

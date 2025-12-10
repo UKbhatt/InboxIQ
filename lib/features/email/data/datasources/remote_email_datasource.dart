@@ -47,11 +47,15 @@ class RemoteEmailDataSource {
           e.type == DioExceptionType.receiveTimeout) {
         return const Error(NetworkFailure('Connection timeout'));
       }
-      return Error(
-        ServerFailure(
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-        ),
-      );
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }
@@ -69,17 +73,36 @@ class RemoteEmailDataSource {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      return Success(response.data as Map<String, dynamic>);
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return Success(data);
+      } else {
+        return Success({
+          'hasSynced': false,
+          'inProgress': false,
+          'lastSyncAt': null,
+          'totalEmails': 0,
+          'lastError': null,
+        });
+      }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         return const Error(NetworkFailure('Connection timeout'));
       }
-      return Error(
-        ServerFailure(
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-        ),
-      );
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null) {
+        if (e.response!.data is Map<String, dynamic>) {
+          errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+        } else {
+          errorMessage = e.message ?? 'Unknown error';
+        }
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }
@@ -103,11 +126,15 @@ class RemoteEmailDataSource {
           e.type == DioExceptionType.receiveTimeout) {
         return const Error(NetworkFailure('Connection timeout'));
       }
-      return Error(
-        ServerFailure(
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-        ),
-      );
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }
@@ -134,11 +161,15 @@ class RemoteEmailDataSource {
           e.type == DioExceptionType.receiveTimeout) {
         return const Error(NetworkFailure('Connection timeout'));
       }
-      return Error(
-        ServerFailure(
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-        ),
-      );
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }
@@ -165,11 +196,47 @@ class RemoteEmailDataSource {
           e.type == DioExceptionType.receiveTimeout) {
         return const Error(NetworkFailure('Connection timeout'));
       }
-      return Error(
-        ServerFailure(
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-        ),
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<void>> markAsRead(String emailId) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      await _dio.put(
+        '${ApiConstants.emailsPath}/$emailId/read',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+
+      return const Success(null);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+      
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+      
+      return Error(ServerFailure(errorMessage));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/di/injection_container.dart';
 import '../providers/email_provider.dart';
 import '../providers/sync_status_provider.dart';
 import '../widgets/email_drawer.dart';
+import '../widgets/email_card.dart';
 import 'email_detail_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -18,19 +20,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isConnecting = false;
   String _selectedEmailType = 'inbox';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isCheckingConnection = true;
+  bool _isGmailConnected = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDashboard();
+    });
+  }
+
+  Future<void> _initializeDashboard() async {
+    // Check Gmail connection status first
+    final authRepository = ref.read(authRepositoryProvider);
+    final connectionResult = await authRepository.isGmailConnected();
+    
+    final isConnected = connectionResult.when(
+      success: (connected) => connected,
+      error: (_) => false,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isCheckingConnection = false;
+        _isGmailConnected = isConnected;
+      });
+
+      // Load sync status
       ref.read(syncStatusProvider.notifier).loadSyncStatus();
-      final syncState = ref.read(syncStatusProvider);
-      if (syncState.hasSynced) {
+
+      // If Gmail is connected, automatically load emails
+      if (isConnected) {
         ref
             .read(emailProvider.notifier)
             .loadEmails(refresh: true, type: _selectedEmailType);
       }
-    });
+    }
   }
 
   void _onEmailTypeSelected(String type) {
@@ -124,7 +150,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
+      // Re-check connection status after connecting
+      final authRepository = ref.read(authRepositoryProvider);
+      final connectionResult = await authRepository.isGmailConnected();
+      final isConnected = connectionResult.when(
+        success: (connected) => connected,
+        error: (_) => false,
+      );
+      
+      setState(() {
+        _isGmailConnected = isConnected;
+      });
+      
       ref.read(syncStatusProvider.notifier).loadSyncStatus();
+      
+      if (isConnected) {
+        ref
+            .read(emailProvider.notifier)
+            .loadEmails(refresh: true, type: _selectedEmailType);
+      }
     }
   }
 
@@ -151,13 +195,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.read(syncStatusProvider.notifier).loadSyncStatus();
-          if (syncState.hasSynced) {
+          if (_isGmailConnected) {
             await ref
                 .read(emailProvider.notifier)
                 .loadEmails(refresh: true, type: _selectedEmailType);
           }
         },
-        child: syncState.hasSynced || syncState.inProgress
+        child: _isCheckingConnection
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Checking Gmail connection...'),
+                  ],
+                ),
+              )
+            : _isGmailConnected
             ? Column(
                 children: [
                   if (syncState.inProgress)
@@ -207,58 +262,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             itemCount: emailState.emails.length,
                             itemBuilder: (context, index) {
                               final email = emailState.emails[index];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: ListTile(
-                                  title: Text(
-                                    email.subject,
-                                    style: TextStyle(
-                                      fontWeight: email.isRead
-                                          ? FontWeight.normal
-                                          : FontWeight.bold,
+                              return EmailCard(
+                                email: email,
+                                onTap: () async {
+                                  await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EmailDetailScreen(
+                                        emailId: email.id,
+                                      ),
                                     ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(email.from),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        email.snippet,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                  trailing: Text(
-                                    _formatDate(email.date),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => EmailDetailScreen(
-                                          emailId: email.id,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                                  );
+                                  // No need to refresh - optimistic update already handled UI
+                                  // Optionally refresh in background to ensure consistency
+                                  // (but UI is already updated via optimistic update)
+                                },
                               );
                             },
                           ),
                   ),
-                  if (emailState.isLoading && emailState.emails.isNotEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
                 ],
               )
             : Center(
@@ -300,21 +321,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 
   String _getEmailTypeTitle(String type) {
