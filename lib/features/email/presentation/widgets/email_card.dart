@@ -12,25 +12,31 @@ class EmailCard extends StatelessWidget {
   });
 
   String _getInitials(String from) {
-    if (from.isEmpty) return '?';
+    // Prefer fromName if available for better initials
+    String name = email.fromName ?? '';
     
-    // Try to extract name from "Name <email@domain.com>" format
-    String name = from;
-    if (from.contains('<')) {
-      name = from.substring(0, from.indexOf('<')).trim();
-    }
-    
-    // Remove email if it's just an email address
-    if (name.contains('@')) {
-      name = name.split('@')[0];
+    if (name.isEmpty) {
+      // Fallback: extract name from "Name <email@domain.com>" format
+      name = from;
+      if (from.contains('<')) {
+        name = from.substring(0, from.indexOf('<')).trim();
+      }
+      
+      // Remove email if it's just an email address
+      if (name.contains('@')) {
+        name = name.split('@')[0];
+      }
     }
     
     // Get first letter, or first two letters if available
     name = name.trim();
     if (name.isEmpty) {
       // Fallback to email first letter
-      final emailPart = from.split('@').first;
-      return emailPart.isNotEmpty ? emailPart[0].toUpperCase() : '?';
+      if (from.contains('@')) {
+        final emailPart = from.split('@').first;
+        return emailPart.isNotEmpty ? emailPart[0].toUpperCase() : '?';
+      }
+      return '?';
     }
     
     final words = name.split(' ');
@@ -73,8 +79,32 @@ class EmailCard extends StatelessWidget {
     }
   }
 
+  String _getSenderName() {
+    // Use fromName if available, otherwise parse from email
+    if (email.fromName != null && email.fromName!.isNotEmpty) {
+      return email.fromName!;
+    }
+    
+    // Fallback: extract name from "Name <email@domain.com>" format
+    String name = email.from;
+    if (email.from.contains('<')) {
+      name = email.from.substring(0, email.from.indexOf('<')).trim();
+      name = name.replaceAll('"', '').replaceAll("'", '');
+    }
+    
+    // If still looks like email, use username part
+    if (name.isEmpty || name.contains('@')) {
+      if (email.from.contains('@')) {
+        name = email.from.split('@')[0];
+      }
+    }
+    
+    return name.trim().isEmpty ? 'Unknown' : name.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final senderName = _getSenderName();
     final initials = _getInitials(email.from);
     final avatarColor = _getAvatarColor(email.from);
     
@@ -90,11 +120,10 @@ class EmailCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar with read/unread indicator
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -110,7 +139,6 @@ class EmailCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Read/Unread indicator dot
                   if (!email.isRead)
                     Positioned(
                       top: -2,
@@ -131,18 +159,18 @@ class EmailCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              // Email content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            email.from,
+                            senderName,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: email.isRead
                                   ? FontWeight.normal
                                   : FontWeight.w600,
@@ -167,36 +195,20 @@ class EmailCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
                     Text(
                       email.subject.isEmpty ? '(No Subject)' : email.subject,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: email.isRead
                             ? FontWeight.normal
-                            : FontWeight.w600,
+                            : FontWeight.w500,
                         color: email.isRead
-                            ? Colors.grey.shade700
+                            ? Colors.grey.shade600
                             : Colors.black87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (email.snippet.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        email.snippet,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                          fontWeight: email.isRead
-                              ? FontWeight.normal
-                              : FontWeight.w400,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                   ],
                 ),
               ),

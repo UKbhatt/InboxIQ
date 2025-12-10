@@ -272,9 +272,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       ),
                                     ),
                                   );
-                                  // No need to refresh - optimistic update already handled UI
-                                  // Optionally refresh in background to ensure consistency
-                                  // (but UI is already updated via optimistic update)
                                 },
                               );
                             },
