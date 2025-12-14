@@ -15,12 +15,14 @@ class EmailRepositoryImpl implements EmailRepository {
     String? pageToken,
     int? offset,
     String? type,
+    String? updatedAfter,
   }) {
     return _dataSource.getEmails(
       limit: limit,
       pageToken: pageToken,
       offset: offset,
       type: type,
+      updatedAfter: updatedAfter,
     );
   }
 

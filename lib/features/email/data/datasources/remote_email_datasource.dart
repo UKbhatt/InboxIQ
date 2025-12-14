@@ -18,6 +18,7 @@ class RemoteEmailDataSource {
     String? pageToken,
     int? offset,
     String? type,
+    String? updatedAfter, 
   }) async {
     try {
       final token = _getAccessToken();
@@ -30,6 +31,7 @@ class RemoteEmailDataSource {
       if (offset != null) queryParams['offset'] = offset;
       if (pageToken != null) queryParams['pageToken'] = pageToken;
       if (type != null) queryParams['type'] = type;
+      if (updatedAfter != null) queryParams['updated_after'] = updatedAfter;
 
       final response = await _dio.get(
         ApiConstants.emailsPath,

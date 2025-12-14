@@ -8,6 +8,7 @@ abstract class EmailRepository {
     String? pageToken,
     int? offset,
     String? type,
+    String? updatedAfter,
   });
   Future<Result<Email>> getEmailById(String emailId);
   Future<Result<EmailDetail>> getEmailDetailById(String emailId);

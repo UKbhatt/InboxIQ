@@ -213,72 +213,108 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               )
             : _isGmailConnected
-            ? Column(
-                children: [
-                  if (syncState.inProgress)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Card(
-                        child: Padding(
+            ? emailState.isLoading && emailState.emails.isEmpty
+                ? Column(
+                    children: [
+                      if (syncState.inProgress)
+                        Padding(
                           padding: const EdgeInsets.all(16.0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  const LinearProgressIndicator(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Syncing emails... (${syncState.totalEmails} synced)',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Center(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const LinearProgressIndicator(),
-                              const SizedBox(height: 8),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
                               Text(
-                                'Syncing emails... (${syncState.totalEmails} synced)',
-                                style: Theme.of(context).textTheme.bodySmall,
+                                'Loading ${_getEmailTypeTitle(_selectedEmailType).toLowerCase()}...',
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  Expanded(
-                    child: emailState.isLoading && emailState.emails.isEmpty
-                        ? const Center(child: CircularProgressIndicator())
-                        : emailState.emails.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('No emails found'),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    ref
-                                        .read(emailProvider.notifier)
-                                        .loadEmails(
-                                          refresh: true,
-                                          type: _selectedEmailType,
-                                        );
-                                  },
-                                  child: const Text('Refresh'),
-                                ),
-                              ],
+                    ],
+                  )
+                : Column(
+                    children: [
+                      if (syncState.inProgress)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  const LinearProgressIndicator(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Syncing emails... (${syncState.totalEmails} synced)',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
                             ),
-                          )
-                        : ListView.builder(
-                            itemCount: emailState.emails.length,
-                            itemBuilder: (context, index) {
-                              final email = emailState.emails[index];
-                              return EmailCard(
-                                email: email,
-                                onTap: () async {
-                                  await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => EmailDetailScreen(
-                                        emailId: email.id,
-                                      ),
+                          ),
+                        ),
+                      Expanded(
+                        child: emailState.emails.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text('No emails found'),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        ref
+                                            .read(emailProvider.notifier)
+                                            .loadEmails(
+                                              refresh: true,
+                                              type: _selectedEmailType,
+                                            );
+                                      },
+                                      child: const Text('Refresh'),
                                     ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: emailState.emails.length,
+                                itemBuilder: (context, index) {
+                                  final email = emailState.emails[index];
+                                  return EmailCard(
+                                    email: email,
+                                    onTap: () async {
+                                      await Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => EmailDetailScreen(
+                                            emailId: email.id,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   );
                                 },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              )
+                              ),
+                      ),
+                    ],
+                  )
             : Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),

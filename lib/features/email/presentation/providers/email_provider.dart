@@ -42,15 +42,21 @@ class EmailNotifier extends StateNotifier<EmailState> {
     if (state.isLoading) return;
 
     final emailType = type ?? _currentType;
-    if (emailType != _currentType) {
+    final isTypeChanging = emailType != _currentType;
+    
+    if (isTypeChanging) {
       _currentType = emailType;
       _currentOffset = 0;
+      state = state.copyWith(emails: [], isLoading: true, error: null);
+    } else {
+      state = state.copyWith(isLoading: true, error: null);
     }
-
-    state = state.copyWith(isLoading: true, error: null);
 
     if (refresh) {
       _currentOffset = 0;
+      if (!isTypeChanging) {
+        state = state.copyWith(emails: []);
+      }
     }
 
     final result = await _getEmailsUseCase(
@@ -73,31 +79,27 @@ class EmailNotifier extends StateNotifier<EmailState> {
     );
   }
 
-  /// Optimistically marks an email as read in the local state
-  /// Returns the original email state for rollback if needed
+
   Email? markEmailAsReadOptimistic(String emailId) {
     final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
     if (emailIndex == -1) return null;
 
     final originalEmail = state.emails[emailIndex];
     
-    // If already read, no need to update
     if (originalEmail.isRead) return null;
 
-    // Create updated email with isRead = true
     final updatedEmail = originalEmail.copyWith(isRead: true);
     
-    // Update the email in the list
     final updatedEmails = List<Email>.from(state.emails);
     updatedEmails[emailIndex] = updatedEmail;
     
-    // Update state immediately (optimistic update)
+    //optimistic update
     state = state.copyWith(emails: updatedEmails);
     
     return originalEmail;
   }
 
-  /// Rolls back the optimistic update if API call fails
+
   void rollbackMarkAsRead(String emailId, Email originalEmail) {
     final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
     if (emailIndex == -1) return;
