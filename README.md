@@ -12,6 +12,49 @@
 
 A modern, feature-rich email management application built with Flutter and Node.js, providing seamless Gmail integration with intelligent email organization and access.
 
+## 🔐 Login & Test Account Usage
+
+### 📌 Important Notice — Use Test Accounts Only
+
+This application is currently in **development mode**, and the Gmail OAuth consent screen is in **Testing** status.
+
+Because of this:
+
+- Only **whitelisted test users** in Google Cloud Console can log in using Gmail OAuth.
+- If you are **not** added as a test user, Google will block login and show:  
+  **“Access blocked: This app is not verified.”**
+
+---
+
+## 👤 How to Log In
+
+You can log in to InboxIQ in two ways:
+
+### 1️⃣ Supabase Email/Password Login
+
+You can create an account using your:
+
+- Email  
+- Password  
+
+This will allow you to access the app and connect Gmail later.
+
+### 2️⃣ Gmail Login (For Test Users Only)
+
+To use Gmail features (Inbox, Drafts, Sent, Attachments, etc.),  
+you **must log in using a Google account added as a test user**.
+
+If you are a tester, please use the following test account:
+
+### 📧 Test Gmail Account (For Development Only)
+
+Email: utkb30938@gmail.com <br>
+Password: test@123
+
+⚠️ Use only this test account.
+
+ --- 
+ 
 ## ✨ Features
 
 - 🔐 **Hybrid Authentication System** - Secure Supabase authentication with email/password
