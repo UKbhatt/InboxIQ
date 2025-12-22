@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/widgets/logo_loader.dart';
 import '../providers/email_provider.dart';
 import '../providers/sync_status_provider.dart';
 import '../widgets/email_drawer.dart';
@@ -35,7 +38,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Check Gmail connection status first
     final authRepository = ref.read(authRepositoryProvider);
     final connectionResult = await authRepository.isGmailConnected();
-    
+
     final isConnected = connectionResult.when(
       success: (connected) => connected,
       error: (_) => false,
@@ -47,10 +50,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _isGmailConnected = isConnected;
       });
 
-      // Load sync status
       ref.read(syncStatusProvider.notifier).loadSyncStatus();
 
-      // If Gmail is connected, automatically load emails
       if (isConnected) {
         ref
             .read(emailProvider.notifier)
@@ -150,20 +151,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) {
-      // Re-check connection status after connecting
+      // Re-checking
       final authRepository = ref.read(authRepositoryProvider);
       final connectionResult = await authRepository.isGmailConnected();
       final isConnected = connectionResult.when(
         success: (connected) => connected,
         error: (_) => false,
       );
-      
+
       setState(() {
         _isGmailConnected = isConnected;
       });
-      
+
       ref.read(syncStatusProvider.notifier).loadSyncStatus();
-      
+
       if (isConnected) {
         ref
             .read(emailProvider.notifier)
@@ -179,10 +180,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
+      backgroundColor: const Color(0xFF0A0E27),
       appBar: AppBar(
-        title: Text(_getEmailTypeTitle(_selectedEmailType)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.blue.shade400, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              _getEmailTypeTitle(_selectedEmailType),
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.menu),
+          icon: SvgPicture.asset(
+            'assets/menu.svg',
+            width: 24,
+            height: 24,
+            color: Colors.white,
+          ),
           onPressed: () {
             _scaffoldKey.currentState?.openDrawer();
           },
@@ -202,153 +224,319 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           }
         },
         child: _isCheckingConnection
-            ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Checking Gmail connection...'),
-                  ],
+            ? Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0A0E27),
+                      const Color(0xFF1A1F3A),
+                      const Color(0xFF0F1419),
+                    ],
+                  ),
                 ),
+                child: LogoLoader(message: 'Checking Gmail connection...'),
               )
             : _isGmailConnected
             ? emailState.isLoading && emailState.emails.isEmpty
-                ? Column(
-                    children: [
-                      if (syncState.inProgress)
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Card(
-                            child: Padding(
+                  ? Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF0A0E27),
+                            const Color(0xFF1A1F3A),
+                            const Color(0xFF0F1419),
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          if (syncState.inProgress)
+                            Container(
+                              margin: const EdgeInsets.all(16.0),
                               padding: const EdgeInsets.all(16.0),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
                               child: Column(
                                 children: [
-                                  const LinearProgressIndicator(),
+                                  LinearProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue.shade400,
+                                    ),
+                                    backgroundColor: Colors.white.withOpacity(
+                                      0.1,
+                                    ),
+                                  ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Syncing emails... (${syncState.totalEmails} synced)',
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey.shade300,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+                          Expanded(
+                            child: LogoLoader(
+                              message:
+                                  'Loading ${_getEmailTypeTitle(_selectedEmailType).toLowerCase()}...',
+                            ),
                           ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF0A0E27),
+                            const Color(0xFF1A1F3A),
+                            const Color(0xFF0F1419),
+                          ],
                         ),
-                      Expanded(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading ${_getEmailTypeTitle(_selectedEmailType).toLowerCase()}...',
+                      ),
+                      child: Column(
+                        children: [
+                          if (syncState.inProgress)
+                            Container(
+                              margin: const EdgeInsets.all(16.0),
+                              padding: const EdgeInsets.all(16.0),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  LinearProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue.shade400,
+                                    ),
+                                    backgroundColor: Colors.white.withOpacity(
+                                      0.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Syncing emails... (${syncState.totalEmails} synced)',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey.shade300,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Expanded(
+                            child: emailState.emails.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        SvgPicture.asset(
+                                          'assets/no_email.svg',
+                                          width: 64,
+                                          height: 64,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        Text(
+                                          'No emails found',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey.shade400,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        Container(
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.blue.shade400,
+                                                Colors.blue.shade600,
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              ref
+                                                  .read(emailProvider.notifier)
+                                                  .loadEmails(
+                                                    refresh: true,
+                                                    type: _selectedEmailType,
+                                                  );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              shadowColor: Colors.transparent,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Refresh',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: emailState.emails.length,
+                                    itemBuilder: (context, index) {
+                                      final email = emailState.emails[index];
+                                      return EmailCard(
+                                        email: email,
+                                        onTap: () async {
+                                          await Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => EmailDetailScreen(
+                                                emailId: email.id,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    )
+            : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0A0E27),
+                      const Color(0xFF1A1F3A),
+                      const Color(0xFF0F1419),
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 80,
+                          color: Colors.blue.shade400,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Connect Your Gmail',
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'To access your emails, please connect your Gmail account. We will only request read-only access to your emails.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey.shade400,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 48),
+                        Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.blue.shade400,
+                                Colors.blue.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.shade400.withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      if (syncState.inProgress)
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                children: [
-                                  const LinearProgressIndicator(),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Syncing emails... (${syncState.totalEmails} synced)',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
+                          child: ElevatedButton(
+                            onPressed: _isConnecting ? null : _connectGmail,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                            child: _isConnecting
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.mail_outline,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Connect Gmail',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
-                      Expanded(
-                        child: emailState.emails.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text('No emails found'),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        ref
-                                            .read(emailProvider.notifier)
-                                            .loadEmails(
-                                              refresh: true,
-                                              type: _selectedEmailType,
-                                            );
-                                      },
-                                      child: const Text('Refresh'),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: emailState.emails.length,
-                                itemBuilder: (context, index) {
-                                  final email = emailState.emails[index];
-                                  return EmailCard(
-                                    email: email,
-                                    onTap: () async {
-                                      await Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => EmailDetailScreen(
-                                            emailId: email.id,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  )
-            : Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Connect Your Gmail',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'To access your emails, please connect your Gmail account. We will only request read-only access to your emails.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 48),
-                      ElevatedButton(
-                        onPressed: _isConnecting ? null : _connectGmail,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: _isConnecting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Connect Gmail'),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

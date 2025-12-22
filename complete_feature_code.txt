@@ -1,0 +1,3601 @@
+================================================================================
+features\email\data\datasources\remote_email_datasource.dart
+================================================================================
+
+import 'package:dio/dio.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/result.dart';
+import '../models/email_model.dart';
+import '../models/email_detail_model.dart';
+import '../../domain/entities/email.dart';
+import '../../domain/entities/email_detail.dart';
+
+class RemoteEmailDataSource {
+  final Dio _dio;
+  final String? Function() _getAccessToken;
+
+  RemoteEmailDataSource(this._dio, this._getAccessToken);
+
+  Future<Result<List<Email>>> getEmails({
+    int? limit,
+    String? pageToken,
+    int? offset,
+    String? type,
+    String? updatedAfter,
+  }) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final queryParams = <String, dynamic>{};
+      if (limit != null) queryParams['limit'] = limit;
+      if (offset != null) queryParams['offset'] = offset;
+      if (pageToken != null) queryParams['pageToken'] = pageToken;
+      if (type != null) queryParams['type'] = type;
+      if (updatedAfter != null) queryParams['updated_after'] = updatedAfter;
+
+      final response = await _dio.get(
+        ApiConstants.emailsPath,
+        queryParameters: queryParams,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      final emails = (response.data['emails'] as List<dynamic>)
+          .map((json) => EmailModel.fromGmailApi(json as Map<String, dynamic>))
+          .toList();
+
+      return Success(emails);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<Map<String, dynamic>>> getSyncStatus() async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final response = await _dio.get(
+        ApiConstants.emailSyncStatusPath,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return Success(data);
+      } else {
+        return Success({
+          'hasSynced': false,
+          'inProgress': false,
+          'lastSyncAt': null,
+          'totalEmails': 0,
+          'lastError': null,
+        });
+      }
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null) {
+        if (e.response!.data is Map<String, dynamic>) {
+          errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+        } else {
+          errorMessage = e.message ?? 'Unknown error';
+        }
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<void>> startSync() async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      await _dio.post(
+        ApiConstants.emailSyncPath,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      return const Success(null);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<Email>> getEmailById(String emailId) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final response = await _dio.get(
+        '${ApiConstants.emailsPath}/$emailId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      final email = EmailModel.fromGmailApi(
+        response.data as Map<String, dynamic>,
+      );
+      return Success(email);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      final response = await _dio.get(
+        '${ApiConstants.emailsPath}/$emailId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      final emailDetail = EmailDetailModel.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+      return Success(emailDetail);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+
+  Future<Result<void>> markAsRead(String emailId) async {
+    try {
+      final token = _getAccessToken();
+      if (token == null) {
+        return const Error(AuthFailure('Not authenticated'));
+      }
+
+      await _dio.put(
+        '${ApiConstants.emailsPath}/$emailId/read',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      return const Success(null);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return const Error(NetworkFailure('Connection timeout'));
+      }
+
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
+      } else {
+        errorMessage = e.message ?? 'Unknown error';
+      }
+
+      return Error(ServerFailure(errorMessage));
+    } catch (e) {
+      return Error(ServerFailure(e.toString()));
+    }
+  }
+}
+
+
+
+================================================================================
+features\email\data\models\email_detail_model.dart
+================================================================================
+
+import '../../domain/entities/email_detail.dart';
+
+class EmailDetailModel extends EmailDetail {
+  const EmailDetailModel({
+    required super.id,
+    required super.subject,
+    required super.from,
+    super.fromName,
+    super.to,
+    super.cc,
+    super.bcc,
+    required super.snippet,
+    super.bodyText,
+    super.bodyHtml,
+    required super.date,
+    required super.isRead,
+    required super.isStarred,
+  });
+
+  factory EmailDetailModel.fromJson(Map<String, dynamic> json) {
+    final dateStr = json['date'] as String?;
+    DateTime date;
+    try {
+      date = dateStr != null ? DateTime.parse(dateStr) : DateTime.now();
+    } catch (e) {
+      date = DateTime.now();
+    }
+
+    return EmailDetailModel(
+      id: json['id'] as String? ?? json['gmail_message_id'] as String? ?? '',
+      subject: json['subject'] as String? ?? '(No Subject)',
+      from: json['from'] as String? ?? json['from_email'] as String? ?? '',
+      fromName: json['fromName'] as String?,
+      to: json['to'] as String? ?? json['to_email'] as String?,
+      cc: json['cc'] as String?,
+      bcc: json['bcc'] as String?,
+      snippet: json['snippet'] as String? ?? '',
+      bodyText: json['bodyText'] as String? ?? json['body_text'] as String?,
+      bodyHtml: json['bodyHtml'] as String? ?? json['body_html'] as String?,
+      date: date,
+      isRead: json['isRead'] as bool? ?? json['is_read'] as bool? ?? false,
+      isStarred:
+          json['isStarred'] as bool? ?? json['is_starred'] as bool? ?? false,
+    );
+  }
+}
+
+
+
+================================================================================
+features\email\data\models\email_model.dart
+================================================================================
+
+import '../../domain/entities/email.dart';
+
+class EmailModel extends Email {
+  const EmailModel({
+    required super.id,
+    required super.subject,
+    required super.from,
+    super.fromName,
+    required super.snippet,
+    required super.date,
+    required super.isRead,
+  });
+
+  factory EmailModel.fromGmailApi(Map<String, dynamic> json) {
+    if (json.containsKey('gmail_message_id') || json.containsKey('from_email')) {
+      final dateStr = json['date'] as String?;
+      DateTime date;
+      try {
+        date = dateStr != null ? DateTime.parse(dateStr) : DateTime.now();
+      } catch (e) {
+        date = DateTime.now();
+      }
+
+      return EmailModel(
+        id: json['gmail_message_id'] as String? ?? json['id'] as String? ?? '',
+        subject: json['subject'] as String? ?? '(No Subject)',
+        from: json['from_email'] as String? ?? json['from'] as String? ?? '',
+        fromName: json['from_name'] as String?,
+        snippet: json['snippet'] as String? ?? '',
+        date: date,
+        isRead: json['is_read'] as bool? ?? json['isRead'] as bool? ?? false,
+      );
+    }
+
+    final payload = json['payload'] as Map<String, dynamic>?;
+    final headers = payload?['headers'] as List<dynamic>? ?? [];
+
+    String subject = '';
+    String from = '';
+
+    for (final header in headers) {
+      final name = (header as Map<String, dynamic>)['name'] as String?;
+      final value = header['value'] as String?;
+      if (name == 'Subject') subject = value ?? '';
+      if (name == 'From') from = value ?? '';
+    }
+
+    return EmailModel(
+      id: json['id'] as String,
+      subject: subject,
+      from: from,
+      snippet: json['snippet'] as String? ?? '',
+      date: DateTime.fromMillisecondsSinceEpoch(
+        int.parse(json['internalDate'] as String),
+      ),
+      isRead: !((json['labelIds'] as List<dynamic>?)?.contains('UNREAD') ?? true),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'subject': subject,
+      'from': from,
+      'snippet': snippet,
+      'date': date.toIso8601String(),
+      'isRead': isRead,
+    };
+  }
+}
+
+
+
+
+================================================================================
+features\email\data\repositories\email_repository_impl.dart
+================================================================================
+
+import '../../domain/repositories/email_repository.dart';
+import '../../domain/entities/email.dart';
+import '../../domain/entities/email_detail.dart';
+import '../../../../core/utils/result.dart';
+import '../datasources/remote_email_datasource.dart';
+
+class EmailRepositoryImpl implements EmailRepository {
+  final RemoteEmailDataSource _dataSource;
+
+  EmailRepositoryImpl(this._dataSource);
+
+  @override
+  Future<Result<List<Email>>> getEmails({
+    int? limit,
+    String? pageToken,
+    int? offset,
+    String? type,
+    String? updatedAfter,
+  }) {
+    return _dataSource.getEmails(
+      limit: limit,
+      pageToken: pageToken,
+      offset: offset,
+      type: type,
+      updatedAfter: updatedAfter,
+    );
+  }
+
+  @override
+  Future<Result<Email>> getEmailById(String emailId) {
+    return _dataSource.getEmailById(emailId);
+  }
+
+  @override
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId) {
+    return _dataSource.getEmailDetailById(emailId);
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> getSyncStatus() {
+    return _dataSource.getSyncStatus();
+  }
+
+  @override
+  Future<Result<void>> startSync() {
+    return _dataSource.startSync();
+  }
+
+  @override
+  Future<Result<void>> markAsRead(String emailId) {
+    return _dataSource.markAsRead(emailId);
+  }
+}
+
+
+
+================================================================================
+features\email\domain\entities\email.dart
+================================================================================
+
+class Email {
+  final String id;
+  final String subject;
+  final String from;
+  final String? fromName;
+  final String snippet;
+  final DateTime date;
+  final bool isRead;
+
+  const Email({
+    required this.id,
+    required this.subject,
+    required this.from,
+    this.fromName,
+    required this.snippet,
+    required this.date,
+    required this.isRead,
+  });
+
+  Email copyWith({
+    String? id,
+    String? subject,
+    String? from,
+    String? fromName,
+    String? snippet,
+    DateTime? date,
+    bool? isRead,
+  }) {
+    return Email(
+      id: id ?? this.id,
+      subject: subject ?? this.subject,
+      from: from ?? this.from,
+      fromName: fromName ?? this.fromName,
+      snippet: snippet ?? this.snippet,
+      date: date ?? this.date,
+      isRead: isRead ?? this.isRead,
+    );
+  }
+}
+
+
+
+
+================================================================================
+features\email\domain\entities\email_detail.dart
+================================================================================
+
+class EmailDetail {
+  final String id;
+  final String subject;
+  final String from;
+  final String? fromName;
+  final String? to;
+  final String? cc;
+  final String? bcc;
+  final String snippet;
+  final String? bodyText;
+  final String? bodyHtml;
+  final DateTime date;
+  final bool isRead;
+  final bool isStarred;
+
+  const EmailDetail({
+    required this.id,
+    required this.subject,
+    required this.from,
+    this.fromName,
+    this.to,
+    this.cc,
+    this.bcc,
+    required this.snippet,
+    this.bodyText,
+    this.bodyHtml,
+    required this.date,
+    required this.isRead,
+    required this.isStarred,
+  });
+}
+
+
+
+================================================================================
+features\email\domain\repositories\email_repository.dart
+================================================================================
+
+import '../entities/email.dart';
+import '../entities/email_detail.dart';
+import '../../../../core/utils/result.dart';
+
+abstract class EmailRepository {
+  Future<Result<List<Email>>> getEmails({
+    int? limit,
+    String? pageToken,
+    int? offset,
+    String? type,
+    String? updatedAfter,
+  });
+  Future<Result<Email>> getEmailById(String emailId);
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId);
+  Future<Result<Map<String, dynamic>>> getSyncStatus();
+  Future<Result<void>> startSync();
+  Future<Result<void>> markAsRead(String emailId);
+}
+
+
+
+================================================================================
+features\email\domain\usecases\get_email_detail_usecase.dart
+================================================================================
+
+import '../repositories/email_repository.dart';
+import '../../../../core/utils/result.dart';
+import '../entities/email_detail.dart';
+
+class GetEmailDetailUseCase {
+  final EmailRepository repository;
+
+  GetEmailDetailUseCase(this.repository);
+
+  Future<Result<EmailDetail>> call(String emailId) {
+    return repository.getEmailDetailById(emailId);
+  }
+}
+
+
+
+================================================================================
+features\email\domain\usecases\get_emails_usecase.dart
+================================================================================
+
+import '../repositories/email_repository.dart';
+import '../../../../core/utils/result.dart';
+import '../entities/email.dart';
+
+class GetEmailsUseCase {
+  final EmailRepository repository;
+
+  GetEmailsUseCase(this.repository);
+
+  Future<Result<List<Email>>> call({
+    int? limit,
+    String? pageToken,
+    int? offset,
+    String? type,
+  }) {
+    return repository.getEmails(
+      limit: limit,
+      pageToken: pageToken,
+      offset: offset,
+      type: type,
+    );
+  }
+}
+
+
+
+================================================================================
+features\email\presentation\providers\email_detail_provider.dart
+================================================================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/email_detail.dart';
+import '../../domain/usecases/get_email_detail_usecase.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../domain/repositories/email_repository.dart';
+import 'email_provider.dart';
+
+class EmailDetailState {
+  final EmailDetail? email;
+  final bool isLoading;
+  final String? error;
+
+  const EmailDetailState({this.email, this.isLoading = false, this.error});
+
+  EmailDetailState copyWith({
+    EmailDetail? email,
+    bool? isLoading,
+    String? error,
+  }) {
+    return EmailDetailState(
+      email: email ?? this.email,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
+  }
+}
+
+class EmailDetailNotifier extends StateNotifier<EmailDetailState> {
+  final GetEmailDetailUseCase _getEmailDetailUseCase;
+  final EmailRepository _emailRepository;
+  final EmailNotifier _emailNotifier;
+
+  EmailDetailNotifier(
+    this._getEmailDetailUseCase,
+    this._emailRepository,
+    this._emailNotifier,
+  ) : super(const EmailDetailState());
+
+  Future<void> loadEmailDetail(String emailId) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    final result = await _getEmailDetailUseCase(emailId);
+
+    result.when(
+      success: (email) {
+        state = state.copyWith(email: email, isLoading: false);
+      },
+      error: (failure) {
+        state = state.copyWith(isLoading: false, error: failure.message);
+      },
+    );
+  }
+
+  /// Marks email as read with optimistic update
+  /// Should be called AFTER the provider is built and email is loaded
+  Future<void> markAsRead(String emailId) async {
+    // Optimistic update: Mark as read immediately in the email list
+    final originalEmail = _emailNotifier.markEmailAsReadOptimistic(emailId);
+
+    // Mark email as read on server (non-blocking, in background)
+    final result = await _emailRepository.markAsRead(emailId);
+
+    result.when(
+      success: (_) {
+        // Success - optimistic update was correct, no rollback needed
+      },
+      error: (failure) {
+        // API call failed - rollback the optimistic update
+        if (originalEmail != null) {
+          _emailNotifier.rollbackMarkAsRead(emailId, originalEmail);
+        }
+      },
+    );
+  }
+
+  void clear() {
+    state = const EmailDetailState();
+  }
+}
+
+final emailDetailProvider =
+    StateNotifierProvider.family<EmailDetailNotifier, EmailDetailState, String>(
+      (ref, emailId) {
+        final notifier = EmailDetailNotifier(
+          ref.watch(getEmailDetailUseCaseProvider),
+          ref.watch(emailRepositoryProvider),
+          ref.read(emailProvider.notifier),
+        );
+        // Load email detail but don't mark as read yet
+        notifier.loadEmailDetail(emailId);
+        return notifier;
+      },
+    );
+
+
+
+================================================================================
+features\email\presentation\providers\email_provider.dart
+================================================================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/email.dart';
+import '../../domain/usecases/get_emails_usecase.dart';
+import '../../../../core/di/injection_container.dart';
+
+class EmailState {
+  final List<Email> emails;
+  final bool isLoading;
+  final String? error;
+  final String? nextPageToken;
+
+  const EmailState({
+    this.emails = const [],
+    this.isLoading = false,
+    this.error,
+    this.nextPageToken,
+  });
+
+  EmailState copyWith({
+    List<Email>? emails,
+    bool? isLoading,
+    String? error,
+    String? nextPageToken,
+  }) {
+    return EmailState(
+      emails: emails ?? this.emails,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      nextPageToken: nextPageToken ?? this.nextPageToken,
+    );
+  }
+}
+
+class EmailNotifier extends StateNotifier<EmailState> {
+  final GetEmailsUseCase _getEmailsUseCase;
+  int _currentOffset = 0;
+  String _currentType = 'all';
+
+  EmailNotifier(this._getEmailsUseCase) : super(const EmailState());
+
+  Future<void> loadEmails({bool refresh = false, String? type}) async {
+    if (state.isLoading) return;
+
+    final emailType = type ?? _currentType;
+    final isTypeChanging = emailType != _currentType;
+
+    if (isTypeChanging) {
+      _currentType = emailType;
+      _currentOffset = 0;
+      state = state.copyWith(emails: [], isLoading: true, error: null);
+    } else {
+      state = state.copyWith(isLoading: true, error: null);
+    }
+
+    if (refresh) {
+      _currentOffset = 0;
+      if (!isTypeChanging) {
+        state = state.copyWith(emails: []);
+      }
+    }
+
+    final result = await _getEmailsUseCase(
+      limit: 500,
+      offset: _currentOffset,
+      type: emailType == 'inbox' ? null : emailType,
+    );
+
+    result.when(
+      success: (emails) {
+        _currentOffset += emails.length;
+        state = state.copyWith(
+          emails: refresh ? emails : [...state.emails, ...emails],
+          isLoading: false,
+        );
+      },
+      error: (failure) {
+        state = state.copyWith(isLoading: false, error: failure.message);
+      },
+    );
+  }
+
+
+  Email? markEmailAsReadOptimistic(String emailId) {
+    final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
+    if (emailIndex == -1) return null;
+
+    final originalEmail = state.emails[emailIndex];
+
+    if (originalEmail.isRead) return null;
+
+    final updatedEmail = originalEmail.copyWith(isRead: true);
+
+    final updatedEmails = List<Email>.from(state.emails);
+    updatedEmails[emailIndex] = updatedEmail;
+
+    //optimistic update
+    state = state.copyWith(emails: updatedEmails);
+
+    return originalEmail;
+  }
+
+
+  void rollbackMarkAsRead(String emailId, Email originalEmail) {
+    final emailIndex = state.emails.indexWhere((email) => email.id == emailId);
+    if (emailIndex == -1) return;
+
+    final updatedEmails = List<Email>.from(state.emails);
+    updatedEmails[emailIndex] = originalEmail;
+
+    state = state.copyWith(emails: updatedEmails);
+  }
+}
+
+final emailProvider = StateNotifierProvider<EmailNotifier, EmailState>((ref) {
+  return EmailNotifier(ref.watch(getEmailsUseCaseProvider));
+});
+
+
+
+================================================================================
+features\email\presentation\providers\offline_email_provider.dart
+================================================================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/cache/services/email_cache_service.dart';
+import '../../../../core/cache/services/offline_action_queue.dart';
+import '../../../../core/cache/models/offline_action.dart';
+import '../../../../core/sync/services/email_sync_service.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../domain/entities/email.dart';
+import '../providers/email_provider.dart';
+
+class OfflineEmailNotifier extends StateNotifier<EmailState> {
+  final EmailSyncService _syncService;
+
+  OfflineEmailNotifier(this._syncService) : super(const EmailState()) {
+    _loadCachedEmails();
+
+    _syncService.startAutoSync();
+  }
+
+  void _loadCachedEmails({String? type}) {
+    final cachedEmails = EmailCacheService.getAllEmails(type: type);
+    final emails = cachedEmails
+        .map(
+          (cached) => Email(
+            id: cached.id,
+            subject: cached.subject,
+            from: cached.from,
+            fromName: cached.fromName,
+            snippet: cached.snippet,
+            date: cached.date,
+            isRead: cached.isRead,
+          ),
+        )
+        .toList();
+
+    state = state.copyWith(emails: emails, isLoading: false);
+  }
+
+  Future<void> loadEmails({bool refresh = false, String? type}) async {
+    _loadCachedEmails(type: type);
+
+    state = state.copyWith(isLoading: true);
+
+    try {
+      await _syncService.syncEmails(type: type ?? 'inbox', forceFull: refresh);
+
+      // Reload cache
+      _loadCachedEmails(type: type);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Sync failed: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<void> markAsRead(String emailId) async {
+    await EmailCacheService.updateEmail(
+      emailId,
+      (email) => email.copyWith(isRead: true),
+    );
+
+    final updatedEmails = state.emails.map((email) {
+      if (email.id == emailId) {
+        return email.copyWith(isRead: true);
+      }
+      return email;
+    }).toList();
+
+    state = state.copyWith(emails: updatedEmails);
+
+    final action = OfflineAction.markRead(emailId);
+    await OfflineActionQueue.addAction(action);
+
+    final online = await _syncService.isOnline();
+    if (online) {
+      await _syncService.processPendingActions();
+    }
+  }
+
+  Future<Email?> getEmailDetail(String emailId) async {
+    final cached = EmailCacheService.getEmailById(emailId);
+    if (cached != null) {
+      return Email(
+        id: cached.id,
+        subject: cached.subject,
+        from: cached.from,
+        fromName: cached.fromName,
+        snippet: cached.snippet,
+        date: cached.date,
+        isRead: cached.isRead,
+      );
+    }
+
+    final online = await _syncService.isOnline();
+    if (online) {
+      await _syncService.syncEmailBody(emailId);
+      final updated = EmailCacheService.getEmailById(emailId);
+      if (updated != null) {
+        return Email(
+          id: updated.id,
+          subject: updated.subject,
+          from: updated.from,
+          fromName: updated.fromName,
+          snippet: updated.snippet,
+          date: updated.date,
+          isRead: updated.isRead,
+        );
+      }
+    }
+
+    return null;
+  }
+}
+
+final offlineEmailProvider =
+    StateNotifierProvider<OfflineEmailNotifier, EmailState>((ref) {
+      final remoteDataSource = ref.watch(remoteEmailDataSourceProvider);
+      final syncService = EmailSyncService(remoteDataSource);
+      return OfflineEmailNotifier(syncService);
+    });
+
+
+
+================================================================================
+features\email\presentation\providers\sync_status_provider.dart
+================================================================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/repositories/email_repository.dart';
+import '../../../../core/di/injection_container.dart';
+
+class SyncStatusState {
+  final bool hasSynced;
+  final bool inProgress;
+  final DateTime? lastSyncAt;
+  final int totalEmails;
+  final String? lastError;
+  final bool isLoading;
+
+  const SyncStatusState({
+    this.hasSynced = false,
+    this.inProgress = false,
+    this.lastSyncAt,
+    this.totalEmails = 0,
+    this.lastError,
+    this.isLoading = false,
+  });
+
+  SyncStatusState copyWith({
+    bool? hasSynced,
+    bool? inProgress,
+    DateTime? lastSyncAt,
+    int? totalEmails,
+    String? lastError,
+    bool? isLoading,
+  }) {
+    return SyncStatusState(
+      hasSynced: hasSynced ?? this.hasSynced,
+      inProgress: inProgress ?? this.inProgress,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      totalEmails: totalEmails ?? this.totalEmails,
+      lastError: lastError ?? this.lastError,
+      isLoading: isLoading ?? this.isLoading,
+    );
+  }
+}
+
+class SyncStatusNotifier extends StateNotifier<SyncStatusState> {
+  final EmailRepository _emailRepository;
+
+  SyncStatusNotifier(this._emailRepository) : super(const SyncStatusState()) {
+    loadSyncStatus();
+  }
+
+  Future<void> loadSyncStatus() async {
+    state = state.copyWith(isLoading: true);
+
+    final result = await _emailRepository.getSyncStatus();
+
+    result.when(
+      success: (data) {
+        state = SyncStatusState(
+          hasSynced: data['hasSynced'] as bool? ?? false,
+          inProgress: data['inProgress'] as bool? ?? false,
+          lastSyncAt: data['lastSyncAt'] != null
+              ? DateTime.parse(data['lastSyncAt'] as String)
+              : null,
+          totalEmails: data['totalEmails'] as int? ?? 0,
+          lastError: data['lastError'] as String?,
+          isLoading: false,
+        );
+      },
+      error: (failure) {
+        state = state.copyWith(isLoading: false, lastError: failure.message);
+      },
+    );
+  }
+
+  Future<void> startSync() async {
+    if (state.inProgress) return;
+
+    state = state.copyWith(inProgress: true, lastError: null);
+
+    final result = await _emailRepository.startSync();
+
+    result.when(
+      success: (_) {
+        loadSyncStatus();
+      },
+      error: (failure) {
+        state = state.copyWith(inProgress: false, lastError: failure.message);
+      },
+    );
+  }
+}
+
+final syncStatusProvider =
+    StateNotifierProvider<SyncStatusNotifier, SyncStatusState>((ref) {
+      return SyncStatusNotifier(ref.watch(emailRepositoryProvider));
+    });
+
+
+
+================================================================================
+features\email\presentation\screens\dashboard_screen.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/di/injection_container.dart';
+import '../providers/email_provider.dart';
+import '../providers/sync_status_provider.dart';
+import '../widgets/email_drawer.dart';
+import '../widgets/email_card.dart';
+import 'email_detail_screen.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _isConnecting = false;
+  String _selectedEmailType = 'inbox';
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isCheckingConnection = true;
+  bool _isGmailConnected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDashboard();
+    });
+  }
+
+  Future<void> _initializeDashboard() async {
+    // Check Gmail connection status first
+    final authRepository = ref.read(authRepositoryProvider);
+    final connectionResult = await authRepository.isGmailConnected();
+
+    final isConnected = connectionResult.when(
+      success: (connected) => connected,
+      error: (_) => false,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isCheckingConnection = false;
+        _isGmailConnected = isConnected;
+      });
+
+      // Load sync status
+      ref.read(syncStatusProvider.notifier).loadSyncStatus();
+
+      // If Gmail is connected, automatically load emails
+      if (isConnected) {
+        ref
+            .read(emailProvider.notifier)
+            .loadEmails(refresh: true, type: _selectedEmailType);
+      }
+    }
+  }
+
+  void _onEmailTypeSelected(String type) {
+    setState(() {
+      _selectedEmailType = type;
+    });
+    ref.read(emailProvider.notifier).loadEmails(refresh: true, type: type);
+  }
+
+  Future<void> _connectGmail() async {
+    setState(() => _isConnecting = true);
+
+    final authUrl = await ref.read(authProvider.notifier).getOAuthUrl();
+
+    if (authUrl == null) {
+      if (mounted) {
+        final error = ref.read(authProvider).error ?? 'Failed to get OAuth URL';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _connectGmail(),
+            ),
+          ),
+        );
+      }
+      setState(() => _isConnecting = false);
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(authUrl);
+
+      if (!uri.hasScheme || (!uri.scheme.startsWith('http'))) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid URL format: $authUrl'),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        setState(() => _isConnecting = false);
+        return;
+      }
+
+      bool canLaunch = await canLaunchUrl(uri);
+
+      if (!canLaunch) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No app found to open this URL. Please install a web browser.',
+              ),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        setState(() => _isConnecting = false);
+        return;
+      }
+
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open browser. Please try again.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+
+    setState(() => _isConnecting = false);
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      // Re-check connection status after connecting
+      final authRepository = ref.read(authRepositoryProvider);
+      final connectionResult = await authRepository.isGmailConnected();
+      final isConnected = connectionResult.when(
+        success: (connected) => connected,
+        error: (_) => false,
+      );
+
+      setState(() {
+        _isGmailConnected = isConnected;
+      });
+
+      ref.read(syncStatusProvider.notifier).loadSyncStatus();
+
+      if (isConnected) {
+        ref
+            .read(emailProvider.notifier)
+            .loadEmails(refresh: true, type: _selectedEmailType);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emailState = ref.watch(emailProvider);
+    final syncState = ref.watch(syncStatusProvider);
+
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: AppBar(
+        title: Text(_getEmailTypeTitle(_selectedEmailType)),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+      ),
+      drawer: EmailDrawer(
+        selectedType: _selectedEmailType,
+        onTypeSelected: _onEmailTypeSelected,
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.read(syncStatusProvider.notifier).loadSyncStatus();
+          if (_isGmailConnected) {
+            await ref
+                .read(emailProvider.notifier)
+                .loadEmails(refresh: true, type: _selectedEmailType);
+          }
+        },
+        child: _isCheckingConnection
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Checking Gmail connection...'),
+                  ],
+                ),
+              )
+            : _isGmailConnected
+            ? emailState.isLoading && emailState.emails.isEmpty
+                ? Column(
+                    children: [
+                      if (syncState.inProgress)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  const LinearProgressIndicator(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Syncing emails... (${syncState.totalEmails} synced)',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading ${_getEmailTypeTitle(_selectedEmailType).toLowerCase()}...',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      if (syncState.inProgress)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  const LinearProgressIndicator(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Syncing emails... (${syncState.totalEmails} synced)',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: emailState.emails.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text('No emails found'),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        ref
+                                            .read(emailProvider.notifier)
+                                            .loadEmails(
+                                              refresh: true,
+                                              type: _selectedEmailType,
+                                            );
+                                      },
+                                      child: const Text('Refresh'),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: emailState.emails.length,
+                                itemBuilder: (context, index) {
+                                  final email = emailState.emails[index];
+                                  return EmailCard(
+                                    email: email,
+                                    onTap: () async {
+                                      await Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => EmailDetailScreen(
+                                            emailId: email.id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Connect Your Gmail',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'To access your emails, please connect your Gmail account. We will only request read-only access to your emails.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 48),
+                      ElevatedButton(
+                        onPressed: _isConnecting ? null : _connectGmail,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: _isConnecting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Connect Gmail'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  String _getEmailTypeTitle(String type) {
+    switch (type) {
+      case 'inbox':
+        return 'Inbox';
+      case 'sent':
+        return 'Sent';
+      case 'draft':
+        return 'Drafts';
+      case 'starred':
+        return 'Starred';
+      case 'unread':
+        return 'Unread';
+      case 'trash':
+        return 'Trash';
+      case 'spam':
+        return 'Spam';
+      default:
+        return 'Inbox';
+    }
+  }
+}
+
+
+
+================================================================================
+features\email\presentation\screens\email_detail_screen.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import '../providers/email_detail_provider.dart';
+import '../../domain/entities/email_detail.dart';
+
+class EmailDetailScreen extends ConsumerStatefulWidget {
+  final String emailId;
+
+  const EmailDetailScreen({super.key, required this.emailId});
+
+  @override
+  ConsumerState<EmailDetailScreen> createState() => _EmailDetailScreenState();
+}
+
+class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
+  bool _hasMarkedAsRead = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mark as read after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markEmailAsRead();
+    });
+  }
+
+  void _markEmailAsRead() {
+    if (_hasMarkedAsRead) return;
+
+    final emailDetailState = ref.read(emailDetailProvider(widget.emailId));
+
+    // Only mark as read if email is loaded and not already read
+    if (emailDetailState.email != null && !emailDetailState.email!.isRead) {
+      _hasMarkedAsRead = true;
+      ref.read(emailDetailProvider(widget.emailId).notifier).markAsRead(widget.emailId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emailDetailState = ref.watch(emailDetailProvider(widget.emailId));
+
+    // Mark as read when email is loaded (if not already marked)
+    if (emailDetailState.email != null && !_hasMarkedAsRead) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _markEmailAsRead();
+      });
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Email Details')),
+      body: emailDetailState.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : emailDetailState.error != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    emailDetailState.error!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref
+                          .read(emailDetailProvider(widget.emailId).notifier)
+                          .loadEmailDetail(widget.emailId);
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : emailDetailState.email == null
+          ? const Center(child: Text('Email not found'))
+          : _buildEmailContent(context, emailDetailState.email!),
+    );
+  }
+
+  Widget _buildEmailContent(BuildContext context, EmailDetail email) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    email.subject,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (email.isStarred)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8.0),
+                    child: Icon(Icons.star, color: Colors.amber),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              context,
+              'From',
+              email.fromName != null && email.fromName!.isNotEmpty
+                  ? '${email.fromName} <${email.from}>'
+                  : email.from,
+            ),
+            if (email.to != null && email.to!.isNotEmpty)
+              _buildInfoRow(context, 'To', email.to!),
+            if (email.cc != null && email.cc!.isNotEmpty)
+              _buildInfoRow(context, 'CC', email.cc!),
+            if (email.bcc != null && email.bcc!.isNotEmpty)
+              _buildInfoRow(context, 'BCC', email.bcc!),
+            _buildInfoRow(context, 'Date', _formatDate(email.date)),
+            const Divider(height: 32),
+            if (email.bodyText != null && email.bodyText!.isNotEmpty)
+              _buildTextBody(context, email.bodyText!)
+            else if (email.bodyHtml != null && email.bodyHtml!.isNotEmpty)
+              _buildHtmlBody(context, email.bodyHtml!)
+            else if (email.snippet.isNotEmpty)
+              _buildTextBody(context, email.snippet)
+            else
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'No content available',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextBody(BuildContext context, String text) {
+    if (text.trim().isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'No content available',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: SelectableText(text, style: Theme.of(context).textTheme.bodyLarge),
+    );
+  }
+
+  Widget _buildHtmlBody(BuildContext context, String html) {
+    final strippedText = _stripHtml(html);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: SelectableText(
+        strippedText.isNotEmpty
+            ? strippedText
+            : 'No readable content available',
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+    );
+  }
+
+  String _stripHtml(String html) {
+    String text = html
+        .replaceAll(
+          RegExp(r'<script[^>]*>[\s\S]*?</script>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(
+          RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+        .replaceAll('&mdash;', '—')
+        .replaceAll('&ndash;', '–')
+        .replaceAll('&hellip;', '...')
+        .trim();
+
+    return text.isEmpty ? html : text;
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${date.day}/${date.month}/${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    }
+  }
+}
+
+
+
+================================================================================
+features\email\presentation\services\email_summary_service.dart
+================================================================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/ai/services/gemini_summary_service.dart';
+import '../../data/datasources/remote_email_datasource.dart';
+import '../../../../core/di/injection_container.dart';
+
+class EmailSummaryService {
+  final RemoteEmailDataSource _dataSource;
+
+  EmailSummaryService(this._dataSource);
+
+  Future<String?> getSummary(String emailId) async {
+    if (!GeminiSummaryService.isAvailable) {
+      return null;
+    }
+
+    final result = await _dataSource.getEmailDetailById(emailId);
+
+    return await result.when(
+      success: (emailDetail) async {
+        String content = '';
+        if (emailDetail.bodyText != null && emailDetail.bodyText!.isNotEmpty) {
+          content = emailDetail.bodyText!;
+        } else if (emailDetail.bodyHtml != null &&
+            emailDetail.bodyHtml!.isNotEmpty) {
+          content = emailDetail.bodyHtml!;
+        } else if (emailDetail.snippet.isNotEmpty) {
+          content = emailDetail.snippet;
+        }
+
+        if (content.isEmpty) {
+          return null;
+        }
+
+        final summary = await GeminiSummaryService.summarizeEmail(
+          subject: emailDetail.subject,
+          content: content,
+        );
+
+        return summary;
+      },
+      error: (_) async => null,
+    );
+  }
+}
+
+final emailSummaryServiceProvider = Provider<EmailSummaryService>((ref) {
+  final dataSource = ref.watch(remoteEmailDataSourceProvider);
+  return EmailSummaryService(dataSource);
+});
+
+
+
+================================================================================
+features\email\presentation\widgets\email_card.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/email.dart';
+import '../services/email_summary_service.dart';
+import 'email_summary_popover.dart';
+
+class EmailCard extends ConsumerStatefulWidget {
+  final Email email;
+  final VoidCallback onTap;
+
+  const EmailCard({super.key, required this.email, required this.onTap});
+
+  @override
+  ConsumerState<EmailCard> createState() => _EmailCardState();
+}
+
+class _EmailCardState extends ConsumerState<EmailCard> {
+  bool _isLoadingSummary = false;
+  bool _showPopover = false;
+  final GlobalKey _aiButtonKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  String _getInitials(String from) {
+    String name = widget.email.fromName ?? '';
+
+    if (name.isEmpty) {
+      name = from;
+      if (from.contains('<')) {
+        name = from.substring(0, from.indexOf('<')).trim();
+      }
+
+      if (name.contains('@')) {
+        name = name.split('@')[0];
+      }
+    }
+
+    name = name.trim();
+    if (name.isEmpty) {
+      if (from.contains('@')) {
+        final emailPart = from.split('@').first;
+        return emailPart.isNotEmpty ? emailPart[0].toUpperCase() : '?';
+      }
+      return '?';
+    }
+
+    final words = name.split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  Color _getAvatarColor(String from) {
+    final hash = from.hashCode;
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.red,
+      Colors.teal,
+      Colors.pink,
+      Colors.indigo,
+      Colors.cyan,
+      Colors.amber,
+    ];
+    return colors[hash.abs() % colors.length];
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _getSenderName() {
+    if (widget.email.fromName != null && widget.email.fromName!.isNotEmpty) {
+      return widget.email.fromName!;
+    }
+
+    String name = widget.email.from;
+    if (widget.email.from.contains('<')) {
+      name = widget.email.from
+          .substring(0, widget.email.from.indexOf('<'))
+          .trim();
+      name = name.replaceAll('"', '').replaceAll("'", '');
+    }
+
+    if (name.isEmpty || name.contains('@')) {
+      if (widget.email.from.contains('@')) {
+        name = widget.email.from.split('@')[0];
+      }
+    }
+
+    return name.trim().isEmpty ? 'Unknown' : name.trim();
+  }
+
+  void _showPopoverOverlay({String? summary, bool isLoading = false}) {
+    _hidePopover();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => EmailSummaryPopover(
+        summary: summary ?? 'Generating summary...',
+        isLoading: isLoading,
+        buttonKey: _aiButtonKey,
+        onDismiss: _hidePopover,
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    setState(() {
+      _showPopover = true;
+    });
+  }
+
+  void _hidePopover() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    setState(() {
+      _showPopover = false;
+    });
+  }
+
+  Future<void> _showSummary() async {
+    if (_isLoadingSummary || _showPopover) return;
+
+    setState(() {
+      _isLoadingSummary = true;
+    });
+
+    // Show loading popover
+    if (mounted) {
+      _showPopoverOverlay(isLoading: true);
+    }
+
+    try {
+      final summaryService = ref.read(emailSummaryServiceProvider);
+      final summary = await summaryService.getSummary(widget.email.id);
+
+      if (!mounted) return;
+
+      if (summary != null) {
+        _hidePopover();
+        if (mounted) {
+          _showPopoverOverlay(summary: summary, isLoading: false);
+        }
+      } else {
+        _hidePopover();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to generate summary. Please try again.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _hidePopover();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingSummary = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _hidePopover();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final senderName = _getSenderName();
+    final initials = _getInitials(widget.email.from);
+    final avatarColor = _getAvatarColor(widget.email.from);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: Border(
+        bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+      ),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: avatarColor,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (!widget.email.isRead)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            senderName,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: widget.email.isRead
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                              color: widget.email.isRead
+                                  ? Colors.grey.shade700
+                                  : Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDate(widget.email.date),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: widget.email.isRead
+                                ? FontWeight.normal
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      widget.email.subject.isEmpty
+                          ? '(No Subject)'
+                          : widget.email.subject,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: widget.email.isRead
+                            ? FontWeight.normal
+                            : FontWeight.w500,
+                        color: widget.email.isRead
+                            ? Colors.grey.shade600
+                            : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                key: _aiButtonKey,
+                onTap: _showPopover ? _hidePopover : _showSummary,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: _showPopover
+                      ? BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        )
+                      : null,
+                  child: _isLoadingSummary
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          Icons.auto_awesome,
+                          size: 20,
+                          color: _showPopover
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+================================================================================
+features\email\presentation\widgets\email_drawer.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+
+class EmailDrawer extends ConsumerWidget {
+  final String selectedType;
+  final Function(String) onTypeSelected;
+
+  const EmailDrawer({
+    super.key,
+    required this.selectedType,
+    required this.onTypeSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            if (authState.user != null)
+              UserAccountsDrawerHeader(
+                accountName: Text(authState.user!.email.split('@')[0]),
+                accountEmail: Text(authState.user!.email),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: Text(
+                    authState.user!.email[0].toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.inbox,
+                    title: 'Inbox',
+                    type: 'inbox',
+                    isSelected: selectedType == 'inbox',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.send,
+                    title: 'Sent',
+                    type: 'sent',
+                    isSelected: selectedType == 'sent',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.edit,
+                    title: 'Drafts',
+                    type: 'draft',
+                    isSelected: selectedType == 'draft',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.star,
+                    title: 'Starred',
+                    type: 'starred',
+                    isSelected: selectedType == 'starred',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.mark_email_unread,
+                    title: 'Unread',
+                    type: 'unread',
+                    isSelected: selectedType == 'unread',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.delete,
+                    title: 'Trash',
+                    type: 'trash',
+                    isSelected: selectedType == 'trash',
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.report,
+                    title: 'Spam',
+                    type: 'spam',
+                    isSelected: selectedType == 'spam',
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Sign Out'),
+                    onTap: () async {
+                      await ref.read(authProvider.notifier).signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushReplacementNamed('/signin');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String type,
+    required bool isSelected,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      selected: isSelected,
+      selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
+      onTap: () {
+        Navigator.of(context).pop();
+        onTypeSelected(type);
+      },
+    );
+  }
+}
+
+
+
+================================================================================
+features\email\presentation\widgets\email_summary_dialog.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+
+class EmailSummaryDialog extends StatelessWidget {
+  final String summary;
+  final bool isLoading;
+
+  const EmailSummaryDialog({
+    super.key,
+    required this.summary,
+    this.isLoading = false,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required String summary,
+    bool isLoading = false,
+  }) async {
+    return showDialog(
+      context: context,
+      builder: (context) => EmailSummaryDialog(
+        summary: summary,
+        isLoading: isLoading,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Email Summary',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  summary,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+================================================================================
+features\email\presentation\widgets\email_summary_popover.dart
+================================================================================
+
+import 'package:flutter/material.dart';
+
+class EmailSummaryPopover extends StatelessWidget {
+  final String summary;
+  final bool isLoading;
+  final VoidCallback onDismiss;
+  final GlobalKey buttonKey;
+
+  const EmailSummaryPopover({
+    super.key,
+    required this.summary,
+    required this.isLoading,
+    required this.onDismiss,
+    required this.buttonKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onDismiss,
+      behavior: HitTestBehavior.opaque,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            _PositionedPopover(
+              buttonKey: buttonKey,
+              child: _PopoverContent(
+                summary: summary,
+                isLoading: isLoading,
+                onDismiss: onDismiss,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _PopoverContent extends StatelessWidget {
+  final String summary;
+  final bool isLoading;
+  final VoidCallback onDismiss;
+
+  const _PopoverContent({
+    required this.summary,
+    required this.isLoading,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 240,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'AI Summary',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: onDismiss,
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (isLoading)
+                const Center(
+                  child: SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                Text(
+                  summary,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                ),
+            ],
+          ),
+        ),
+
+        Positioned(
+          left: -6,
+          top: 22,
+          child: CustomPaint(
+            size: const Size(12, 16),
+            painter: _BubbleTailPainter(
+              color: Theme.of(context).colorScheme.surface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+
+class _PositionedPopover extends StatelessWidget {
+  final GlobalKey buttonKey;
+  final Widget child;
+
+  const _PositionedPopover({
+    required this.buttonKey,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final renderBox =
+        buttonKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (renderBox == null) {
+      return Positioned(top: 80, right: 16, child: child);
+    }
+
+    final buttonOffset = renderBox.localToGlobal(Offset.zero);
+    final buttonSize = renderBox.size;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    const popoverHeight = 120.0;
+    const gap = 6.0;
+
+    bool showAbove =
+        buttonOffset.dy > popoverHeight + 40;
+
+    final double top = showAbove
+        ? buttonOffset.dy - popoverHeight - gap
+        : buttonOffset.dy + buttonSize.height + gap;
+
+    return Positioned(
+      top: top.clamp(8.0, screenHeight - popoverHeight - 8.0),
+      right: 16.0,
+      child: child,
+    );
+  }
+}
+
+
+
+class _BubbleTailPainter extends CustomPainter {
+  final Color color;
+
+  _BubbleTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+
+    final path = Path()
+      ..moveTo(size.width, size.height / 2 - 6)
+      ..lineTo(0, size.height / 2)
+      ..lineTo(size.width, size.height / 2 + 6)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+
+================================================================================
+core\ai\services\gemini_summary_service.dart
+================================================================================
+
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class GeminiSummaryService {
+  static String? _apiKey;
+  static GenerativeModel? _model;
+
+  static void initialize() {
+    _apiKey = dotenv.env['GEMINI_API_KEY'];
+    // print('this is the api key ${_apiKey}');
+    if (_apiKey != null && _apiKey!.isNotEmpty) {
+      _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: _apiKey!);
+    }
+  }
+
+  static bool get isAvailable =>
+      _apiKey != null && _apiKey!.isNotEmpty && _model != null;
+
+  static Future<String?> summarizeEmail({
+    required String subject,
+    required String content,
+  }) async {
+    if (!isAvailable) {
+      return null;
+    }
+
+    try {
+      final cleanContent = _cleanEmailContent(content);
+
+      final limitedContent = cleanContent.length > 2000
+          ? cleanContent.substring(0, 2000)
+          : cleanContent;
+
+      final prompt =
+          '''
+      Summarize this email in 3-4 very short single line bullet points. Focus only on the main content and key points. Do not include sender names, email addresses, or any personal information. Be concise and clear.
+      Subject: $subject
+      Content:
+      $limitedContent
+      Summary:''';
+      final response = await _model!.generateContent([Content.text(prompt)]);
+
+      if (response.text != null && response.text!.isNotEmpty) {
+        return response.text!.trim();
+      }
+
+      return null;
+    } catch (e) {
+      print('Error generating email summary: $e');
+      return null;
+    }
+  }
+
+  static String _cleanEmailContent(String content) {
+    String cleaned = content
+        .replaceAll(
+          RegExp(r'<script[^>]*>[\s\S]*?</script>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(
+          RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false),
+          '',
+        )
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+        .replaceAll('&mdash;', '—')
+        .replaceAll('&ndash;', '–')
+        .replaceAll('&hellip;', '...')
+        .trim();
+
+    cleaned = cleaned
+        .replaceAll(
+          RegExp(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
+          '',
+        )
+        .replaceAll(RegExp(r'https?://[^\s]+'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    return cleaned;
+  }
+}
+
+
+
+================================================================================
+core\cache\adapters\cached_email_adapter.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+import '../models/cached_email.dart';
+
+class CachedEmailAdapter extends TypeAdapter<CachedEmail> {
+  @override
+  final int typeId = 0;
+
+  @override
+  CachedEmail read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return CachedEmail(
+      id: fields[0] as String,
+      subject: fields[1] as String,
+      from: fields[2] as String,
+      fromName: fields[3] as String?,
+      snippet: fields[4] as String,
+      date: DateTime.parse(fields[5] as String),
+      isRead: fields[6] as bool,
+      isStarred: fields[7] as bool,
+      labels: (fields[8] as List).cast<String>(),
+      bodyText: fields[9] as String?,
+      bodyHtml: fields[10] as String?,
+      updatedAt: DateTime.parse(fields[11] as String),
+      type: fields[12] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, CachedEmail obj) {
+    writer
+      ..writeByte(13)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.subject)
+      ..writeByte(2)
+      ..write(obj.from)
+      ..writeByte(3)
+      ..write(obj.fromName)
+      ..writeByte(4)
+      ..write(obj.snippet)
+      ..writeByte(5)
+      ..write(obj.date.toIso8601String())
+      ..writeByte(6)
+      ..write(obj.isRead)
+      ..writeByte(7)
+      ..write(obj.isStarred)
+      ..writeByte(8)
+      ..write(obj.labels)
+      ..writeByte(9)
+      ..write(obj.bodyText)
+      ..writeByte(10)
+      ..write(obj.bodyHtml)
+      ..writeByte(11)
+      ..write(obj.updatedAt.toIso8601String())
+      ..writeByte(12)
+      ..write(obj.type);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CachedEmailAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+
+
+
+================================================================================
+core\cache\adapters\email_summary_adapter.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+import '../models/email_summary.dart';
+
+class EmailSummaryAdapter extends TypeAdapter<EmailSummary> {
+  @override
+  final int typeId = 2;
+
+  @override
+  EmailSummary read(BinaryReader reader) {
+    return EmailSummary(
+      emailId: reader.readString(),
+      summary: reader.readString(),
+      createdAt: DateTime.parse(reader.readString()),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, EmailSummary obj) {
+    writer.writeString(obj.emailId);
+    writer.writeString(obj.summary);
+    writer.writeString(obj.createdAt.toIso8601String());
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EmailSummaryAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+
+
+================================================================================
+core\cache\adapters\offline_action_adapter.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+import '../models/offline_action.dart';
+
+class OfflineActionAdapter extends TypeAdapter<OfflineAction> {
+  @override
+  final int typeId = 1;
+
+  @override
+  OfflineAction read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return OfflineAction(
+      id: fields[0] as String,
+      type: fields[1] as String,
+      emailId: fields[2] as String,
+      createdAt: DateTime.parse(fields[3] as String),
+      data: fields[4] as Map<String, dynamic>?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, OfflineAction obj) {
+    writer
+      ..writeByte(5)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.type)
+      ..writeByte(2)
+      ..write(obj.emailId)
+      ..writeByte(3)
+      ..write(obj.createdAt.toIso8601String())
+      ..writeByte(4)
+      ..write(obj.data);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OfflineActionAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+
+
+
+================================================================================
+core\cache\models\cached_email.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+
+@HiveType(typeId: 0)
+class CachedEmail extends HiveObject {
+  @HiveField(0)
+  final String id;
+
+  @HiveField(1)
+  final String subject;
+
+  @HiveField(2)
+  final String from;
+
+  @HiveField(3)
+  String? fromName;
+
+  @HiveField(4)
+  final String snippet;
+
+  @HiveField(5)
+  final DateTime date;
+
+  @HiveField(6)
+  bool isRead;
+
+  @HiveField(7)
+  bool isStarred;
+
+  @HiveField(8)
+  final List<String> labels;
+
+  @HiveField(9)
+  String? bodyText;
+
+  @HiveField(10)
+  String? bodyHtml;
+
+  @HiveField(11)
+  final DateTime updatedAt;
+
+  @HiveField(12)
+  final String? type;
+
+  CachedEmail({
+    required this.id,
+    required this.subject,
+    required this.from,
+    this.fromName,
+    required this.snippet,
+    required this.date,
+    required this.isRead,
+    required this.isStarred,
+    required this.labels,
+    this.bodyText,
+    this.bodyHtml,
+    required this.updatedAt,
+    this.type,
+  });
+
+  CachedEmail copyWith({
+    String? id,
+    String? subject,
+    String? from,
+    String? fromName,
+    String? snippet,
+    DateTime? date,
+    bool? isRead,
+    bool? isStarred,
+    List<String>? labels,
+    String? bodyText,
+    String? bodyHtml,
+    DateTime? updatedAt,
+    String? type,
+  }) {
+    return CachedEmail(
+      id: id ?? this.id,
+      subject: subject ?? this.subject,
+      from: from ?? this.from,
+      fromName: fromName ?? this.fromName,
+      snippet: snippet ?? this.snippet,
+      date: date ?? this.date,
+      isRead: isRead ?? this.isRead,
+      isStarred: isStarred ?? this.isStarred,
+      labels: labels ?? this.labels,
+      bodyText: bodyText ?? this.bodyText,
+      bodyHtml: bodyHtml ?? this.bodyHtml,
+      updatedAt: updatedAt ?? this.updatedAt,
+      type: type ?? this.type,
+    );
+  }
+}
+
+
+
+================================================================================
+core\cache\models\email_summary.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+
+@HiveType(typeId: 2)
+class EmailSummary extends HiveObject {
+  @HiveField(0)
+  final String emailId;
+
+  @HiveField(1)
+  final String summary;
+
+  @HiveField(2)
+  final DateTime createdAt;
+
+  EmailSummary({
+    required this.emailId,
+    required this.summary,
+    required this.createdAt,
+  });
+}
+
+
+
+
+================================================================================
+core\cache\models\offline_action.dart
+================================================================================
+
+import 'package:hive/hive.dart';
+
+@HiveType(typeId: 1)
+class OfflineAction extends HiveObject {
+  @HiveField(0)
+  final String id;
+
+  @HiveField(1)
+  final String type;
+
+  @HiveField(2)
+  final String emailId;
+
+  @HiveField(3)
+  final DateTime createdAt;
+
+  @HiveField(4)
+  final Map<String, dynamic>? data;
+
+  OfflineAction({
+    required this.id,
+    required this.type,
+    required this.emailId,
+    required this.createdAt,
+    this.data,
+  });
+
+  factory OfflineAction.markRead(String emailId) {
+    return OfflineAction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: 'MARK_READ',
+      emailId: emailId,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  factory OfflineAction.star(String emailId) {
+    return OfflineAction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: 'STAR',
+      emailId: emailId,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  factory OfflineAction.unstar(String emailId) {
+    return OfflineAction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: 'UNSTAR',
+      emailId: emailId,
+      createdAt: DateTime.now(),
+    );
+  }
+}
+
+
+
+================================================================================
+core\cache\services\email_cache_service.dart
+================================================================================
+
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/cached_email.dart';
+
+class EmailCacheService {
+  static const String _emailBoxName = 'emails';
+  static Box<CachedEmail>? _emailBox;
+
+  static Future<void> init() async {
+    _emailBox = await Hive.openBox<CachedEmail>(_emailBoxName);
+  }
+
+  static Box<CachedEmail> get emailBox {
+    if (_emailBox == null) {
+      throw Exception('EmailCacheService not initialized. Call init() first.');
+    }
+    return _emailBox!;
+  }
+
+  static List<CachedEmail> getAllEmails({String? type}) {
+    final emails = emailBox.values.toList();
+    if (type != null) {
+      return emails.where((email) => email.type == type).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+    }
+    return emails..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  static CachedEmail? getEmailById(String id) {
+    return emailBox.get(id);
+  }
+
+  static Future<void> cacheEmail(CachedEmail email) async {
+    await emailBox.put(email.id, email);
+  }
+
+  static Future<void> cacheEmails(List<CachedEmail> emails) async {
+    final Map<String, CachedEmail> emailMap = {
+      for (var email in emails) email.id: email
+    };
+    await emailBox.putAll(emailMap);
+  }
+
+  static Future<void> updateEmail(String id, CachedEmail Function(CachedEmail) updateFn) async {
+    final email = emailBox.get(id);
+    if (email != null) {
+      final updated = updateFn(email);
+      await emailBox.put(id, updated);
+    }
+  }
+
+  static Future<void> deleteEmail(String id) async {
+    await emailBox.delete(id);
+  }
+
+  static Future<void> clearAll() async {
+    await emailBox.clear();
+  }
+
+  static DateTime? getLastSyncTime(String type) {
+    final emails = getAllEmails(type: type);
+    if (emails.isEmpty) return null;
+    return emails.map((e) => e.updatedAt).reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  static int getEmailCount({String? type}) {
+    if (type != null) {
+      return emailBox.values.where((email) => email.type == type).length;
+    }
+    return emailBox.length;
+  }
+}
+
+
+
+
+================================================================================
+core\cache\services\email_summary_cache.dart
+================================================================================
+
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/email_summary.dart';
+
+class EmailSummaryCache {
+  static const String _summaryBoxName = 'email_summaries';
+  static Box<EmailSummary>? _summaryBox;
+
+  static Future<void> init() async {
+    _summaryBox = await Hive.openBox<EmailSummary>(_summaryBoxName);
+  }
+
+  static Box<EmailSummary> get summaryBox {
+    if (_summaryBox == null) {
+      throw Exception('EmailSummaryCache not initialized. Call init() first.');
+    }
+    return _summaryBox!;
+  }
+
+  static String? getSummary(String emailId) {
+    final summary = summaryBox.get(emailId);
+    return summary?.summary;
+  }
+
+  static Future<void> cacheSummary(String emailId, String summary) async {
+    await summaryBox.put(
+      emailId,
+      EmailSummary(
+        emailId: emailId,
+        summary: summary,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  static bool hasSummary(String emailId) {
+    return summaryBox.containsKey(emailId);
+  }
+
+  static Future<void> deleteSummary(String emailId) async {
+    await summaryBox.delete(emailId);
+  }
+
+  static Future<void> clearAll() async {
+    await summaryBox.clear();
+  }
+}
+
+
+
+
+================================================================================
+core\cache\services\offline_action_queue.dart
+================================================================================
+
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/offline_action.dart';
+
+class OfflineActionQueue {
+  static const String _actionBoxName = 'offline_actions';
+  static Box<OfflineAction>? _actionBox;
+
+  static Future<void> init() async {
+    _actionBox = await Hive.openBox<OfflineAction>(_actionBoxName);
+  }
+
+  static Box<OfflineAction> get actionBox {
+    if (_actionBox == null) {
+      throw Exception('OfflineActionQueue not initialized. Call init() first.');
+    }
+    return _actionBox!;
+  }
+
+  static Future<void> addAction(OfflineAction action) async {
+    await actionBox.put(action.id, action);
+  }
+
+  static List<OfflineAction> getPendingActions() {
+    return actionBox.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  static Future<void> removeAction(String actionId) async {
+    await actionBox.delete(actionId);
+  }
+
+  static Future<void> clearAll() async {
+    await actionBox.clear();
+  }
+
+  static int getPendingCount() {
+    return actionBox.length;
+  }
+}
+
+
+
+
+================================================================================
+core\constants\api_constants.dart
+================================================================================
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class ApiConstants {
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
+
+  static const String gmailScope = 'https://www.googleapis.com/auth/gmail.readonly';
+  static const String oauthCallbackPath = '/api/oauth/callback';
+  static const String emailsPath = '/api/emails';
+  static const String connectGmailPath = '/api/oauth/connect';
+  static const String emailSyncPath = '/api/emails/sync';
+  static const String emailSyncStatusPath = '/api/emails/sync/status';
+}
+
+
+
+
+================================================================================
+core\di\injection_container.dart
+================================================================================
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/api_constants.dart';
+import '../../features/auth/data/datasources/supabase_auth_datasource.dart';
+import '../../features/auth/data/datasources/remote_auth_datasource.dart';
+import '../../features/email/data/datasources/remote_email_datasource.dart';
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/email/data/repositories/email_repository_impl.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/email/domain/repositories/email_repository.dart';
+import '../../features/auth/domain/usecases/sign_up_usecase.dart';
+import '../../features/auth/domain/usecases/sign_in_usecase.dart';
+import '../../features/auth/domain/usecases/sign_out_usecase.dart';
+import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
+import '../../features/auth/domain/usecases/get_oauth_url_usecase.dart';
+import '../../features/auth/domain/usecases/connect_gmail_usecase.dart';
+import '../../features/email/domain/usecases/get_emails_usecase.dart';
+import '../../features/email/domain/usecases/get_email_detail_usecase.dart';
+
+final supabaseClientProvider = Provider<SupabaseClient>((ref) {
+  return Supabase.instance.client;
+});
+
+final dioProvider = Provider<Dio>((ref) {
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: ApiConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+    ),
+  );
+  return dio;
+});
+
+final supabaseAuthDataSourceProvider = Provider<SupabaseAuthDataSource>((ref) {
+  return SupabaseAuthDataSource(ref.watch(supabaseClientProvider));
+});
+
+final remoteAuthDataSourceProvider = Provider<RemoteAuthDataSource>((ref) {
+  final dio = ref.watch(dioProvider);
+  final supabase = ref.watch(supabaseClientProvider);
+  return RemoteAuthDataSource(
+    dio,
+    () => supabase.auth.currentSession?.accessToken,
+  );
+});
+
+final remoteEmailDataSourceProvider = Provider<RemoteEmailDataSource>((ref) {
+  final dio = ref.watch(dioProvider);
+  final supabase = ref.watch(supabaseClientProvider);
+  return RemoteEmailDataSource(
+    dio,
+    () => supabase.auth.currentSession?.accessToken,
+  );
+});
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepositoryImpl(
+    ref.watch(supabaseAuthDataSourceProvider),
+    ref.watch(remoteAuthDataSourceProvider),
+  );
+});
+
+final emailRepositoryProvider = Provider<EmailRepository>((ref) {
+  return EmailRepositoryImpl(ref.watch(remoteEmailDataSourceProvider));
+});
+
+final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
+  return SignUpUseCase(ref.watch(authRepositoryProvider));
+});
+
+final signInUseCaseProvider = Provider<SignInUseCase>((ref) {
+  return SignInUseCase(ref.watch(authRepositoryProvider));
+});
+
+final signOutUseCaseProvider = Provider<SignOutUseCase>((ref) {
+  return SignOutUseCase(ref.watch(authRepositoryProvider));
+});
+
+final getCurrentUserUseCaseProvider = Provider<GetCurrentUserUseCase>((ref) {
+  return GetCurrentUserUseCase(ref.watch(authRepositoryProvider));
+});
+
+final getOAuthUrlUseCaseProvider = Provider<GetOAuthUrlUseCase>((ref) {
+  return GetOAuthUrlUseCase(ref.watch(authRepositoryProvider));
+});
+
+final connectGmailUseCaseProvider = Provider<ConnectGmailUseCase>((ref) {
+  return ConnectGmailUseCase(ref.watch(authRepositoryProvider));
+});
+
+final getEmailsUseCaseProvider = Provider<GetEmailsUseCase>((ref) {
+  return GetEmailsUseCase(ref.watch(emailRepositoryProvider));
+});
+
+final getEmailDetailUseCaseProvider = Provider<GetEmailDetailUseCase>((ref) {
+  return GetEmailDetailUseCase(ref.watch(emailRepositoryProvider));
+});
+
+
+
+================================================================================
+core\errors\failures.dart
+================================================================================
+
+abstract class Failure {
+  final String message;
+  const Failure(this.message);
+}
+
+class ServerFailure extends Failure {
+  const ServerFailure(super.message);
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure(super.message);
+}
+
+class AuthFailure extends Failure {
+  const AuthFailure(super.message);
+}
+
+class CacheFailure extends Failure {
+  const CacheFailure(super.message);
+}
+
+
+
+
+================================================================================
+core\sync\services\email_sync_service.dart
+================================================================================
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../cache/services/email_cache_service.dart';
+import '../../cache/services/offline_action_queue.dart';
+import '../../cache/models/cached_email.dart';
+import '../../../features/email/data/datasources/remote_email_datasource.dart';
+
+class EmailSyncService {
+  final RemoteEmailDataSource _remoteDataSource;
+  final Connectivity _connectivity = Connectivity();
+  bool _isSyncing = false;
+
+  EmailSyncService(this._remoteDataSource);
+
+  // Check if device is online
+  Future<bool> isOnline() async {
+    final result = await _connectivity.checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
+
+  // Get last sync time from SharedPreferences
+  Future<DateTime?> getLastSyncTime(String type) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastSyncStr = prefs.getString('lastSyncTime_$type');
+    if (lastSyncStr == null) return null;
+    return DateTime.parse(lastSyncStr);
+  }
+
+  // Save last sync time
+  Future<void> saveLastSyncTime(String type, DateTime time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastSyncTime_$type', time.toIso8601String());
+  }
+
+  // Sync emails (delta sync if lastSyncTime exists)
+  Future<void> syncEmails({
+    String type = 'inbox',
+    bool forceFull = false,
+  }) async {
+    if (_isSyncing) {
+      print('Sync already in progress, skipping...');
+      return;
+    }
+
+    final online = await isOnline();
+    if (!online) {
+      print('Device is offline, skipping sync');
+      return;
+    }
+
+    _isSyncing = true;
+    try {
+      final lastSyncTime = forceFull ? null : await getLastSyncTime(type);
+
+      // Fetch emails from backend (delta sync if lastSyncTime exists)
+      final result = await _remoteDataSource.getEmails(
+        limit: 500,
+        offset: 0,
+        type: type,
+        updatedAfter: lastSyncTime?.toIso8601String(),
+      );
+
+      result.when(
+        success: (emails) async {
+          // Convert Email entities to CachedEmail and cache
+          final cachedEmails = emails.map((email) {
+            return CachedEmail(
+              id: email.id,
+              subject: email.subject,
+              from: email.from,
+              fromName: email.fromName,
+              snippet: email.snippet,
+              date: email.date,
+              isRead: email.isRead,
+              isStarred:
+                  false, // Will be updated from API response if available
+              labels: [], // Will be populated from API if available
+              updatedAt: DateTime.now(),
+              type: type,
+            );
+          }).toList();
+
+          await EmailCacheService.cacheEmails(cachedEmails);
+          await saveLastSyncTime(type, DateTime.now());
+          print('✓ Synced ${cachedEmails.length} emails for $type');
+        },
+        error: (failure) {
+          print('Sync error: ${failure.message}');
+        },
+      );
+
+      // Process pending offline actions
+      await processPendingActions();
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  // Process pending offline actions
+  Future<void> processPendingActions() async {
+    final actions = OfflineActionQueue.getPendingActions();
+    if (actions.isEmpty) return;
+
+    print('Processing ${actions.length} pending actions...');
+
+    for (final action in actions) {
+      try {
+        switch (action.type) {
+          case 'MARK_READ':
+            final markResult = await _remoteDataSource.markAsRead(
+              action.emailId,
+            );
+            markResult.when(
+              success: (_) async {
+                // Update local cache
+                await EmailCacheService.updateEmail(
+                  action.emailId,
+                  (email) => email.copyWith(isRead: true),
+                );
+                await OfflineActionQueue.removeAction(action.id);
+                print(
+                  '✓ Processed action: ${action.type} for ${action.emailId}',
+                );
+              },
+              error: (failure) {
+                print('Error processing MARK_READ: ${failure.message}');
+                // Keep action in queue to retry later
+              },
+            );
+            break;
+          case 'STAR':
+            // Implement star API call when available
+            await EmailCacheService.updateEmail(
+              action.emailId,
+              (email) => email.copyWith(isStarred: true),
+            );
+            await OfflineActionQueue.removeAction(action.id);
+            print('✓ Processed action: ${action.type} for ${action.emailId}');
+            break;
+          case 'UNSTAR':
+            // Implement unstar API call when available
+            await EmailCacheService.updateEmail(
+              action.emailId,
+              (email) => email.copyWith(isStarred: false),
+            );
+            await OfflineActionQueue.removeAction(action.id);
+            print('✓ Processed action: ${action.type} for ${action.emailId}');
+            break;
+        }
+      } catch (e) {
+        print('Error processing action ${action.id}: $e');
+        // Keep action in queue to retry later
+      }
+    }
+  }
+
+  // Sync email body (when user opens email)
+  Future<void> syncEmailBody(String emailId) async {
+    final cached = EmailCacheService.getEmailById(emailId);
+    if (cached != null && cached.bodyText != null) {
+      // Already cached
+      return;
+    }
+
+    final online = await isOnline();
+    if (!online) {
+      print('Device is offline, cannot fetch email body');
+      return;
+    }
+
+    try {
+      final result = await _remoteDataSource.getEmailDetailById(emailId);
+      result.when(
+        success: (emailDetail) {
+          if (cached != null) {
+            EmailCacheService.updateEmail(
+              emailId,
+              (email) => email.copyWith(
+                bodyText: emailDetail.bodyText,
+                bodyHtml: emailDetail.bodyHtml,
+              ),
+            );
+          }
+        },
+        error: (failure) {
+          print('Error fetching email body: ${failure.message}');
+        },
+      );
+    } catch (e) {
+      print('Error syncing email body: $e');
+    }
+  }
+
+  void startAutoSync() {
+    _connectivity.onConnectivityChanged.listen((result) {
+      if (result != ConnectivityResult.none) {
+        print('Internet connection restored, starting sync...');
+        syncEmails(type: 'inbox');
+      }
+    });
+  }
+}
+
+
+
+================================================================================
+core\utils\result.dart
+================================================================================
+
+import '../errors/failures.dart';
+
+sealed class Result<T> {
+  const Result();
+
+  R when<R>({
+    required R Function(T data) success,
+    required R Function(Failure failure) error,
+  }) {
+    return switch (this) {
+      Success<T>(:final data) => success(data),
+      Error<T>(:final failure) => error(failure),
+    };
+  }
+}
+
+final class Success<T> extends Result<T> {
+  final T data;
+  const Success(this.data);
+}
+
+final class Error<T> extends Result<T> {
+  final Failure failure;
+  const Error(this.failure);
+}
+
+
+
+

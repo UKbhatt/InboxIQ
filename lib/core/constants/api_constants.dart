@@ -10,4 +10,3 @@ class ApiConstants {
   static const String emailSyncPath = '/api/emails/sync';
   static const String emailSyncStatusPath = '/api/emails/sync/status';
 }
-

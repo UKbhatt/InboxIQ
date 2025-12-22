@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/email.dart';
 import '../services/email_summary_service.dart';
 import 'email_summary_popover.dart';
@@ -157,9 +158,13 @@ class _EmailCardState extends ConsumerState<EmailCard> {
         _hidePopover();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Unable to generate summary. Please try again.'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text(
+                'Unable to generate summary. Please try again.',
+                style: GoogleFonts.poppins(),
+              ),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -170,7 +175,11 @@ class _EmailCardState extends ConsumerState<EmailCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red.shade900,
+            content: Text(
+              'Error: ${e.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -196,137 +205,147 @@ class _EmailCardState extends ConsumerState<EmailCard> {
     final initials = _getInitials(widget.email.from);
     final avatarColor = _getAvatarColor(widget.email.from);
 
-    return Card(
+    return Container(
       margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: Border(
-        bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.05),
+            width: 1,
+          ),
+        ),
       ),
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: avatarColor,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (!widget.email.isRead)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            senderName,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: widget.email.isRead
-                                  ? FontWeight.normal
-                                  : FontWeight.w600,
-                              color: widget.email.isRead
-                                  ? Colors.grey.shade700
-                                  : Colors.black87,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: avatarColor,
+                      child: Text(
+                        initials,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDate(widget.email.date),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontWeight: widget.email.isRead
-                                ? FontWeight.normal
-                                : FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      widget.email.subject.isEmpty
-                          ? '(No Subject)'
-                          : widget.email.subject,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: widget.email.isRead
-                            ? FontWeight.normal
-                            : FontWeight.w500,
-                        color: widget.email.isRead
-                            ? Colors.grey.shade600
-                            : Colors.black87,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                    if (!widget.email.isRead)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade400,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF0A0E27),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                key: _aiButtonKey,
-                onTap: _showPopover ? _hidePopover : _showSummary,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: _showPopover
-                      ? BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        )
-                      : null,
-                  child: _isLoadingSummary
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.auto_awesome,
-                          size: 20,
-                          color: _showPopover
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.primary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              senderName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: widget.email.isRead
+                                    ? FontWeight.w500
+                                    : FontWeight.w600,
+                                color: widget.email.isRead
+                                    ? Colors.grey.shade400
+                                    : Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatDate(widget.email.date),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.email.subject.isEmpty
+                            ? '(No Subject)'
+                            : widget.email.subject,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: widget.email.isRead
+                              ? FontWeight.w400
+                              : FontWeight.w500,
+                          color: widget.email.isRead
+                              ? Colors.grey.shade500
+                              : Colors.grey.shade300,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                InkWell(
+                  key: _aiButtonKey,
+                  onTap: _showPopover ? _hidePopover : _showSummary,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: _showPopover
+                        ? BoxDecoration(
+                            color: Colors.blue.shade400.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          )
+                        : null,
+                    child: _isLoadingSummary
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue.shade400,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.auto_awesome,
+                            size: 20,
+                            color: Colors.blue.shade400,
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

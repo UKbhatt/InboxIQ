@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/widgets/logo_loader.dart';
 import '../providers/email_detail_provider.dart';
 import '../../domain/entities/email_detail.dart';
 
@@ -19,7 +21,6 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Mark as read after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markEmailAsRead();
     });
@@ -30,7 +31,6 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
     
     final emailDetailState = ref.read(emailDetailProvider(widget.emailId));
     
-    // Only mark as read if email is loaded and not already read
     if (emailDetailState.email != null && !emailDetailState.email!.isRead) {
       _hasMarkedAsRead = true;
       ref.read(emailDetailProvider(widget.emailId).notifier).markAsRead(widget.emailId);
@@ -41,7 +41,6 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
   Widget build(BuildContext context) {
     final emailDetailState = ref.watch(emailDetailProvider(widget.emailId));
     
-    // Mark as read when email is loaded (if not already marked)
     if (emailDetailState.email != null && !_hasMarkedAsRead) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _markEmailAsRead();
@@ -49,77 +48,211 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Email Details')),
-      body: emailDetailState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : emailDetailState.error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    emailDetailState.error!,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      ref
-                          .read(emailDetailProvider(widget.emailId).notifier)
-                          .loadEmailDetail(widget.emailId);
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+      backgroundColor: const Color(0xFF0A0E27),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.email_outlined,
+              color: Colors.blue.shade400,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Email Details',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
-            )
-          : emailDetailState.email == null
-          ? const Center(child: Text('Email not found'))
-          : _buildEmailContent(context, emailDetailState.email!),
+            ),
+          ],
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0A0E27),
+              const Color(0xFF1A1F3A),
+              const Color(0xFF0F1419),
+            ],
+          ),
+        ),
+        child: emailDetailState.isLoading
+            ? LogoLoader(
+                message: 'Loading email...',
+              )
+            : emailDetailState.error != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        emailDetailState.error!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: Colors.grey.shade300,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue.shade400,
+                              Colors.blue.shade600,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            ref
+                                .read(emailDetailProvider(widget.emailId).notifier)
+                                .loadEmailDetail(widget.emailId);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Retry',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : emailDetailState.email == null
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.email_outlined,
+                      size: 64,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Email not found',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : _buildEmailContent(context, emailDetailState.email!),
+      ),
     );
   }
 
   Widget _buildEmailContent(BuildContext context, EmailDetail email) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    email.subject,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      email.subject.isEmpty ? '(No Subject)' : email.subject,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
+                  if (email.isStarred)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Icon(
+                        Icons.star,
+                        color: Colors.amber.shade400,
+                        size: 24,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
                 ),
-                if (email.isStarred)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 8.0),
-                    child: Icon(Icons.star, color: Colors.amber),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoRow(
+                    context,
+                    'From',
+                    email.fromName != null && email.fromName!.isNotEmpty
+                        ? '${email.fromName} <${email.from}>'
+                        : email.from,
                   ),
-              ],
+                  if (email.to != null && email.to!.isNotEmpty)
+                    _buildInfoRow(context, 'To', email.to!),
+                  if (email.cc != null && email.cc!.isNotEmpty)
+                    _buildInfoRow(context, 'CC', email.cc!),
+                  if (email.bcc != null && email.bcc!.isNotEmpty)
+                    _buildInfoRow(context, 'BCC', email.bcc!),
+                  _buildInfoRow(context, 'Date', _formatDate(email.date)),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              context,
-              'From',
-              email.fromName != null && email.fromName!.isNotEmpty
-                  ? '${email.fromName} <${email.from}>'
-                  : email.from,
-            ),
-            if (email.to != null && email.to!.isNotEmpty)
-              _buildInfoRow(context, 'To', email.to!),
-            if (email.cc != null && email.cc!.isNotEmpty)
-              _buildInfoRow(context, 'CC', email.cc!),
-            if (email.bcc != null && email.bcc!.isNotEmpty)
-              _buildInfoRow(context, 'BCC', email.bcc!),
-            _buildInfoRow(context, 'Date', _formatDate(email.date)),
-            const Divider(height: 32),
+            const SizedBox(height: 24),
             if (email.bodyText != null && email.bodyText!.isNotEmpty)
               _buildTextBody(context, email.bodyText!)
             else if (email.bodyHtml != null && email.bodyHtml!.isNotEmpty)
@@ -127,17 +260,26 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
             else if (email.snippet.isNotEmpty)
               _buildTextBody(context, email.snippet)
             else
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24.0),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
                 child: Text(
                   'No content available',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade400,
                   ),
                 ),
               ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -146,24 +288,29 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
 
   Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 60,
+            width: 70,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade400,
               ),
             ),
           ),
           Expanded(
             child: SelectableText(
               value,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: Colors.grey.shade200,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -173,12 +320,22 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
 
   Widget _buildTextBody(BuildContext context, String text) {
     if (text.trim().isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24.0),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
         child: Text(
           'No content available',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey.shade400,
           ),
         ),
       );
@@ -186,15 +343,23 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
         ),
       ),
-      child: SelectableText(text, style: Theme.of(context).textTheme.bodyLarge),
+      child: SelectableText(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          color: Colors.grey.shade200,
+          height: 1.6,
+        ),
+      ),
     );
   }
 
@@ -202,19 +367,24 @@ class _EmailDetailScreenState extends ConsumerState<EmailDetailScreen> {
     final strippedText = _stripHtml(html);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
         ),
       ),
       child: SelectableText(
         strippedText.isNotEmpty
             ? strippedText
             : 'No readable content available',
-        style: Theme.of(context).textTheme.bodyLarge,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          color: Colors.grey.shade200,
+          height: 1.6,
+        ),
       ),
     );
   }

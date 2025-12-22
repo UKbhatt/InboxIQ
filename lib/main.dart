@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'features/auth/presentation/screens/sign_in_screen.dart';
-import 'features/auth/presentation/screens/sign_up_screen.dart';
+import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/email/presentation/screens/dashboard_screen.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'core/cache/adapters/cached_email_adapter.dart';
@@ -57,10 +56,9 @@ class MyApp extends ConsumerWidget {
           if (authState.user != null) {
             return const DashboardScreen();
           }
-          return const SignInScreen();
+          return const AuthScreen();
         },
-        '/signin': (context) => const SignInScreen(),
-        '/signup': (context) => const SignUpScreen(),
+        '/auth': (context) => const AuthScreen(),
         '/dashboard': (context) => const DashboardScreen(),
       },
     );

@@ -7,7 +7,7 @@ class GeminiSummaryService {
 
   static void initialize() {
     _apiKey = dotenv.env['GEMINI_API_KEY'];
-    print('this is the api key ${_apiKey}');
+    // print('this is the api key ${_apiKey}');
     if (_apiKey != null && _apiKey!.isNotEmpty) {
       _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: _apiKey!);
     }
