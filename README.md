@@ -6,7 +6,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-%233ECF8E.svg?style=for-the-badge&logo=Supabase&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-%23000000.svg?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
-![Gemini AI](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=Google&logoColor=white)
+![Llama](https://img.shields.io/badge/Llama_3.1-0467DF?style=for-the-badge&logo=meta&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-Powered-6A5ACD?style=for-the-badge&logo=OpenAI&logoColor=white)
 
 
@@ -44,14 +44,7 @@ This will allow you to access the app and connect Gmail later.
 To use Gmail features (Inbox, Drafts, Sent, Attachments, etc.),  
 you **must log in using a Google account added as a test user**.
 
-If you are a tester, please use the following test account:
-
-### 📧 Test Gmail Account (For Development Only)
-
-Email: utkb30938@gmail.com <br>
-Password: test@123
-
-⚠️ Use only this test account.
+Ask the maintainer to add your Google account as a test user in Google Cloud Console.
 
  --- 
  
@@ -227,6 +220,12 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=https://your-cloudflare-url.trycloudflare.com/api/oauth/callback
 ENCRYPTION_KEY=your_32_byte_hex_encryption_key
+
+# Optional: AI email summaries. Any OpenAI-compatible chat API works;
+# the defaults use Groq's free tier with Llama 3.1 8B.
+LLM_API_KEY=your_groq_api_key
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_MODEL=llama-3.1-8b-instant
 ```
 
 **Generate Encryption Key:**
@@ -284,6 +283,7 @@ flutter run
   - Query params: `limit`, `offset`, `type` (inbox, sent, draft, starred, unread, trash, spam)
 - `GET /api/emails/:emailId` - Get email details
 - `GET /api/emails/:emailId/attachments/:attachmentId` - Get attachment
+- `POST /api/emails/:emailId/summary` - Generate (and cache) an AI summary
 - `POST /api/emails/sync` - Start email sync
 - `GET /api/emails/sync/status` - Get sync status
 
