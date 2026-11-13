@@ -145,30 +145,21 @@ class _EmailCardState extends ConsumerState<EmailCard> {
 
     try {
       final summaryService = ref.read(emailSummaryServiceProvider);
-      final summary = await summaryService.getSummary(widget.email.id);
+      final result = await summaryService.getSummary(widget.email.id);
 
       if (!mounted) return;
+      _hidePopover();
 
-      if (summary != null) {
-        _hidePopover();
-        if (mounted) {
-          _showPopoverOverlay(summary: summary, isLoading: false);
-        }
-      } else {
-        _hidePopover();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.red.shade900,
-              content: Text(
-                'Unable to generate summary. Please try again.',
-                style: GoogleFonts.poppins(),
-              ),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
+      result.when(
+        success: (summary) => _showPopoverOverlay(summary: summary),
+        error: (failure) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text(failure.message, style: GoogleFonts.poppins()),
+            duration: const Duration(seconds: 3),
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       _hidePopover();
