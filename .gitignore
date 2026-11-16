@@ -50,3 +50,5 @@ app.*.map.json
 .env.*.local
 lib/backend/.env
 lib/backend/.env.local
+# Gradle output
+android/build/

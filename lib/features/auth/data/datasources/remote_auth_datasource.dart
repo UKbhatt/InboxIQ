@@ -57,7 +57,7 @@ class RemoteAuthDataSource {
       }
 
       await _dio.post(
-        ApiConstants.oauthCallbackPath,
+        ApiConstants.oauthVerifyPath,
         data: {'code': code},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );

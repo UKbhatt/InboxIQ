@@ -68,3 +68,5 @@ CREATE POLICY "Users can only access their own sync status"
   FOR ALL
   USING (auth.uid() = user_id);
 
+ALTER TABLE emails ADD COLUMN IF NOT EXISTS summary TEXT;
+CREATE INDEX IF NOT EXISTS idx_emails_label_ids ON emails USING GIN (label_ids);

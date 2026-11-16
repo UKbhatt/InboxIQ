@@ -10,13 +10,11 @@ import 'core/cache/adapters/cached_email_adapter.dart';
 import 'core/cache/adapters/offline_action_adapter.dart';
 import 'core/cache/services/email_cache_service.dart';
 import 'core/cache/services/offline_action_queue.dart';
-import 'core/ai/services/gemini_summary_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
-  print('API BASE URL: ${dotenv.env['GEMINI_API_KEY']}');
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
@@ -30,8 +28,6 @@ void main() async {
 
   await EmailCacheService.init();
   await OfflineActionQueue.init();
-
-  GeminiSummaryService.initialize();
 
   runApp(const ProviderScope(child: MyApp()));
 }

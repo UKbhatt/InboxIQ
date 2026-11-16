@@ -18,229 +18,120 @@ class RemoteEmailDataSource {
     String? pageToken,
     int? offset,
     String? type,
-    String? updatedAfter, 
-  }) async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
+    String? updatedAfter,
+  }) {
+    final queryParams = <String, dynamic>{
+      if (limit != null) 'limit': limit,
+      if (offset != null) 'offset': offset,
+      if (pageToken != null) 'pageToken': pageToken,
+      if (type != null) 'type': type,
+      if (updatedAfter != null) 'updated_after': updatedAfter,
+    };
 
-      final queryParams = <String, dynamic>{};
-      if (limit != null) queryParams['limit'] = limit;
-      if (offset != null) queryParams['offset'] = offset;
-      if (pageToken != null) queryParams['pageToken'] = pageToken;
-      if (type != null) queryParams['type'] = type;
-      if (updatedAfter != null) queryParams['updated_after'] = updatedAfter;
-
+    return _authorized((options) async {
       final response = await _dio.get(
         ApiConstants.emailsPath,
         queryParameters: queryParams,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: options,
       );
-
-      final emails = (response.data['emails'] as List<dynamic>)
+      return (response.data['emails'] as List<dynamic>)
           .map((json) => EmailModel.fromGmailApi(json as Map<String, dynamic>))
           .toList();
-
-      return Success(emails);
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
-        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
-    } catch (e) {
-      return Error(ServerFailure(e.toString()));
-    }
+    });
   }
 
-  Future<Result<Map<String, dynamic>>> getSyncStatus() async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
-
+  Future<Result<Map<String, dynamic>>> getSyncStatus() {
+    return _authorized((options) async {
       final response = await _dio.get(
         ApiConstants.emailSyncStatusPath,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: options,
       );
-
       final data = response.data;
-      if (data is Map<String, dynamic>) {
-        return Success(data);
-      } else {
-        return Success({
-          'hasSynced': false,
-          'inProgress': false,
-          'lastSyncAt': null,
-          'totalEmails': 0,
-          'lastError': null,
-        });
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null) {
-        if (e.response!.data is Map<String, dynamic>) {
-          errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-        } else {
-          errorMessage = e.message ?? 'Unknown error';
-        }
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
-    } catch (e) {
-      return Error(ServerFailure(e.toString()));
-    }
+      if (data is Map<String, dynamic>) return data;
+      return {
+        'hasSynced': false,
+        'inProgress': false,
+        'lastSyncAt': null,
+        'totalEmails': 0,
+        'lastError': null,
+      };
+    });
   }
 
-  Future<Result<void>> startSync() async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
-
-      await _dio.post(
-        ApiConstants.emailSyncPath,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      return const Success(null);
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
-        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
-    } catch (e) {
-      return Error(ServerFailure(e.toString()));
-    }
+  Future<Result<void>> startSync() {
+    return _authorized((options) async {
+      await _dio.post(ApiConstants.emailSyncPath, options: options);
+    });
   }
 
-  Future<Result<Email>> getEmailById(String emailId) async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
-
+  Future<Result<Email>> getEmailById(String emailId) {
+    return _authorized((options) async {
       final response = await _dio.get(
         '${ApiConstants.emailsPath}/$emailId',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: options,
       );
-
-      final email = EmailModel.fromGmailApi(
-        response.data as Map<String, dynamic>,
-      );
-      return Success(email);
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
-        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
-    } catch (e) {
-      return Error(ServerFailure(e.toString()));
-    }
+      return EmailModel.fromGmailApi(response.data as Map<String, dynamic>);
+    });
   }
 
-  Future<Result<EmailDetail>> getEmailDetailById(String emailId) async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
-
+  Future<Result<EmailDetail>> getEmailDetailById(String emailId) {
+    return _authorized((options) async {
       final response = await _dio.get(
         '${ApiConstants.emailsPath}/$emailId',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: options,
       );
+      return EmailDetailModel.fromJson(response.data as Map<String, dynamic>);
+    });
+  }
 
-      final emailDetail = EmailDetailModel.fromJson(
-        response.data as Map<String, dynamic>,
+  Future<Result<String>> getEmailSummary(String emailId) {
+    return _authorized((options) async {
+      final response = await _dio.post(
+        '${ApiConstants.emailsPath}/$emailId/summary',
+        options: options,
       );
-      return Success(emailDetail);
+      return response.data['summary'] as String;
+    });
+  }
+
+  Future<Result<void>> markAsRead(String emailId) {
+    return _authorized((options) async {
+      await _dio.put('${ApiConstants.emailsPath}/$emailId/read', options: options);
+    });
+  }
+
+  Future<Result<T>> _authorized<T>(
+    Future<T> Function(Options options) request,
+  ) async {
+    final token = _getAccessToken();
+    if (token == null) {
+      return Error(const AuthFailure('Not authenticated'));
+    }
+    try {
+      final options = Options(headers: {'Authorization': 'Bearer $token'});
+      return Success(await request(options));
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
-        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
+      return Error(_failureFrom(e));
     } catch (e) {
       return Error(ServerFailure(e.toString()));
     }
   }
 
-  Future<Result<void>> markAsRead(String emailId) async {
-    try {
-      final token = _getAccessToken();
-      if (token == null) {
-        return const Error(AuthFailure('Not authenticated'));
-      }
-
-      await _dio.put(
-        '${ApiConstants.emailsPath}/$emailId/read',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      return const Success(null);
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout) {
-        return const Error(NetworkFailure('Connection timeout'));
-      }
-      
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
-        errorMessage = e.response!.data['error'] ?? e.message ?? 'Unknown error';
-      } else {
-        errorMessage = e.message ?? 'Unknown error';
-      }
-      
-      return Error(ServerFailure(errorMessage));
-    } catch (e) {
-      return Error(ServerFailure(e.toString()));
+  Failure _failureFrom(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+        return const NetworkFailure('Connection timeout');
+      case DioExceptionType.connectionError:
+        return const NetworkFailure(
+          'Cannot reach the server. Check your connection and try again.',
+        );
+      default:
+        final data = e.response?.data;
+        final serverMessage = data is Map<String, dynamic>
+            ? data['error'] as String?
+            : null;
+        return ServerFailure(serverMessage ?? e.message ?? 'Unknown error');
     }
   }
 }

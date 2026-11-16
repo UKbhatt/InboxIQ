@@ -19,8 +19,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   bool _isConnecting = false;
+  bool _awaitingGmailConnection = false;
   String _selectedEmailType = 'inbox';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isCheckingConnection = true;
@@ -29,34 +31,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeDashboard();
+      _refreshConnectionStatus();
     });
   }
 
-  Future<void> _initializeDashboard() async {
-    // Check Gmail connection status first
-    final authRepository = ref.read(authRepositoryProvider);
-    final connectionResult = await authRepository.isGmailConnected();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _awaitingGmailConnection) {
+      _awaitingGmailConnection = false;
+      _refreshConnectionStatus();
+    }
+  }
+
+  Future<void> _refreshConnectionStatus() async {
+    final connectionResult = await ref
+        .read(authRepositoryProvider)
+        .isGmailConnected();
     final isConnected = connectionResult.when(
       success: (connected) => connected,
       error: (_) => false,
     );
+    if (!mounted) return;
 
-    if (mounted) {
-      setState(() {
-        _isCheckingConnection = false;
-        _isGmailConnected = isConnected;
-      });
+    setState(() {
+      _isCheckingConnection = false;
+      _isGmailConnected = isConnected;
+    });
 
-      ref.read(syncStatusProvider.notifier).loadSyncStatus();
-
-      if (isConnected) {
-        ref
-            .read(emailProvider.notifier)
-            .loadEmails(refresh: true, type: _selectedEmailType);
-      }
+    ref.read(syncStatusProvider.notifier).loadSyncStatus();
+    if (isConnected) {
+      ref
+          .read(emailProvider.notifier)
+          .loadEmails(refresh: true, type: _selectedEmailType);
     }
   }
 
@@ -128,7 +142,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         mode: LaunchMode.externalApplication,
       );
 
-      if (!launched && mounted) {
+      if (launched) {
+        _awaitingGmailConnection = true;
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not open browser. Please try again.'),
@@ -147,30 +163,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
 
-    setState(() => _isConnecting = false);
-
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      // Re-checking
-      final authRepository = ref.read(authRepositoryProvider);
-      final connectionResult = await authRepository.isGmailConnected();
-      final isConnected = connectionResult.when(
-        success: (connected) => connected,
-        error: (_) => false,
-      );
-
-      setState(() {
-        _isGmailConnected = isConnected;
-      });
-
-      ref.read(syncStatusProvider.notifier).loadSyncStatus();
-
-      if (isConnected) {
-        ref
-            .read(emailProvider.notifier)
-            .loadEmails(refresh: true, type: _selectedEmailType);
-      }
-    }
+    if (mounted) setState(() => _isConnecting = false);
   }
 
   @override
