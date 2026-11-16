@@ -6,7 +6,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-%233ECF8E.svg?style=for-the-badge&logo=Supabase&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-%23000000.svg?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
-![Llama](https://img.shields.io/badge/Llama_3.1-0467DF?style=for-the-badge&logo=meta&logoColor=white)
+![gpt-oss](https://img.shields.io/badge/gpt--oss--20b-000000?style=for-the-badge&logo=openai&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-Powered-6A5ACD?style=for-the-badge&logo=OpenAI&logoColor=white)
 
 
@@ -222,10 +222,10 @@ GOOGLE_REDIRECT_URI=https://your-cloudflare-url.trycloudflare.com/api/oauth/call
 ENCRYPTION_KEY=your_32_byte_hex_encryption_key
 
 # Optional: AI email summaries. Any OpenAI-compatible chat API works;
-# the defaults use Groq's free tier with Llama 3.1 8B.
+# the defaults use Groq's free tier with the open-weight gpt-oss-20b model.
 LLM_API_KEY=your_groq_api_key
 LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_MODEL=llama-3.1-8b-instant
+LLM_MODEL=openai/gpt-oss-20b
 ```
 
 **Generate Encryption Key:**
