@@ -26,8 +26,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<User?>> getCurrentUser() {
+  Result<User?> getCurrentUser() {
     return _supabaseDataSource.getCurrentUser();
+  }
+
+  @override
+  Stream<User?> watchUser() {
+    return _supabaseDataSource.watchUser();
   }
 
   @override

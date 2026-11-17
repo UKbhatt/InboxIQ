@@ -21,12 +21,7 @@ class SupabaseAuthDataSource {
         return const Error(ServerFailure('Sign up failed'));
       }
 
-      final user = UserModel(
-        id: response.user!.id,
-        email: response.user!.email ?? email,
-        name: response.user!.userMetadata?['name'] as String?,
-        createdAt: DateTime.parse(response.user!.createdAt),
-      );
+      final user = UserModel.fromSupabase(response.user!);
 
       if (response.session == null) {
         return Error(
@@ -53,14 +48,7 @@ class SupabaseAuthDataSource {
         return const Error(AuthFailure('Sign in failed'));
       }
 
-      final user = UserModel(
-        id: response.user!.id,
-        email: response.user!.email ?? email,
-        name: response.user!.userMetadata?['name'] as String?,
-        createdAt: DateTime.parse(response.user!.createdAt),
-      );
-
-      return Success(user);
+      return Success(UserModel.fromSupabase(response.user!));
     } catch (e) {
       return Error(AuthFailure(e.toString()));
     }
@@ -75,24 +63,20 @@ class SupabaseAuthDataSource {
     }
   }
 
-  Future<Result<User?>> getCurrentUser() async {
+  Result<User?> getCurrentUser() {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        return const Success(null);
-      }
-
-      final userModel = UserModel(
-        id: user.id,
-        email: user.email ?? '',
-        name: user.userMetadata?['name'] as String?,
-        createdAt: DateTime.parse(user.createdAt),
-      );
-
-      return Success(userModel);
+      return Success(user == null ? null : UserModel.fromSupabase(user));
     } catch (e) {
       return Error(AuthFailure(e.toString()));
     }
+  }
+
+  Stream<User?> watchUser() {
+    return _supabase.auth.onAuthStateChange.map((change) {
+      final user = change.session?.user;
+      return user == null ? null : UserModel.fromSupabase(user);
+    });
   }
 
   String? getAccessToken() {

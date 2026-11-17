@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/sign_up_usecase.dart';
@@ -28,28 +30,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final SignUpUseCase _signUpUseCase;
   final SignInUseCase _signInUseCase;
   final SignOutUseCase _signOutUseCase;
-  final GetCurrentUserUseCase _getCurrentUserUseCase;
   final GetOAuthUrlUseCase _getOAuthUrlUseCase;
   final ConnectGmailUseCase _connectGmailUseCase;
+  late final StreamSubscription<User?> _userChanges;
 
   AuthNotifier(
     this._signUpUseCase,
     this._signInUseCase,
     this._signOutUseCase,
-    this._getCurrentUserUseCase,
+    GetCurrentUserUseCase getCurrentUserUseCase,
     this._getOAuthUrlUseCase,
     this._connectGmailUseCase,
-  ) : super(const AuthState()) {
-    checkAuth();
+    Stream<User?> userChanges,
+  ) : super(AuthState(user: _restoredUser(getCurrentUserUseCase))) {
+    _userChanges = userChanges.listen(_applyUserChange);
   }
 
-  Future<void> checkAuth() async {
-    state = state.copyWith(isLoading: true);
-    final result = await _getCurrentUserUseCase();
-    result.when(
-      success: (user) => state = state.copyWith(user: user, isLoading: false),
-      error: (failure) => state = state.copyWith(isLoading: false),
-    );
+  static User? _restoredUser(GetCurrentUserUseCase getCurrentUser) {
+    return getCurrentUser().when(success: (user) => user, error: (_) => null);
+  }
+
+  void _applyUserChange(User? user) {
+    state = user == null ? const AuthState() : state.copyWith(user: user);
+  }
+
+  @override
+  void dispose() {
+    _userChanges.cancel();
+    super.dispose();
   }
 
   Future<bool> signUp(String email, String password) async {
@@ -123,5 +131,6 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
     ref.watch(getCurrentUserUseCaseProvider),
     ref.watch(getOAuthUrlUseCaseProvider),
     ref.watch(connectGmailUseCaseProvider),
+    ref.watch(authRepositoryProvider).watchUser(),
   );
 });

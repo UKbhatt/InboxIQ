@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../domain/entities/user.dart';
 
 class UserModel extends User {
@@ -7,6 +8,15 @@ class UserModel extends User {
     super.name,
     required super.createdAt,
   });
+
+  factory UserModel.fromSupabase(supabase.User user) {
+    return UserModel(
+      id: user.id,
+      email: user.email ?? '',
+      name: user.userMetadata?['name'] as String?,
+      createdAt: DateTime.parse(user.createdAt),
+    );
+  }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

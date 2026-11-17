@@ -140,12 +140,7 @@ class EmailDrawer extends ConsumerWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    onTap: () async {
-                      await ref.read(authProvider.notifier).signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/');
-                      }
-                    },
+                    onTap: () => ref.read(authProvider.notifier).signOut(),
                   ),
                 ],
               ),

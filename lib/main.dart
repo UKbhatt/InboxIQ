@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'features/auth/presentation/screens/auth_screen.dart';
-import 'features/email/presentation/screens/dashboard_screen.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/widgets/auth_gate.dart';
 import 'core/cache/adapters/cached_email_adapter.dart';
 import 'core/cache/adapters/offline_action_adapter.dart';
 import 'core/cache/services/email_cache_service.dart';
@@ -36,13 +34,11 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'InboxIQ',
       debugShowCheckedModeBanner: false,
@@ -50,17 +46,7 @@ class MyApp extends ConsumerWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) {
-          if (authState.user != null) {
-            return const DashboardScreen();
-          }
-          return const AuthScreen();
-        },
-        '/auth': (context) => const AuthScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
-      },
+      home: const AuthGate(),
     );
   }
 }

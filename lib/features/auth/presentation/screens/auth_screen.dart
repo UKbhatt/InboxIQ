@@ -53,9 +53,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           _signInPasswordController.text,
         );
 
-    if (success && mounted) {
-      Navigator.of(context).pushReplacementNamed('/dashboard');
-    } else if (mounted) {
+    if (!success && mounted) {
       final error = ref.read(authProvider).error ?? 'Sign in failed';
       final isEmailNotConfirmed =
           error.toLowerCase().contains('email') &&
